@@ -1,3 +1,12 @@
+# [v3.10.5](https://github.com/crimera/piko-newx/releases/tag/v3.10.5) (2026-09-06)
+
+### Commits
+* [`eb4054d`](https://github.com/crimera/piko/commit/eb4054d91e21e33ee0f245c8388f0ff95fa8003f) feat(newx): restore twitter bird for notification icons
+* [`73449eb`](https://github.com/crimera/piko/commit/73449eb838c0578296309b4213354719f9d26c07) feat(newx): add timeline tab customization
+
+### New Patches
+* **Twitter:** NewX: Customize timeline tabs
+
 # [v3.10.4](https://github.com/crimera/piko-newx/releases/tag/v3.10.4) (2026-09-06)
 
 ### Commits
