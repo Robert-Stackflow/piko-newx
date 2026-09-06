@@ -1,3 +1,12 @@
+# [v3.10.6](https://github.com/crimera/piko-newx/releases/tag/v3.10.6) (2026-09-06)
+
+### Commits
+* [`4f98e4a`](https://github.com/crimera/piko/commit/4f98e4a28c0fde7555faa48eb7dd5d82ab39b448) feat(newx): add timeline tabs bar toggle
+* [`bc03fce`](https://github.com/crimera/piko/commit/bc03fce4352bcb7ee89299722d0e900af3fb8a82) fix(newx): harden timeline tabs bar resolver
+
+### New Patches
+* **Twitter:** NewX: Hide timeline tabs bar
+
 # [v3.10.5](https://github.com/crimera/piko-newx/releases/tag/v3.10.5) (2026-09-06)
 
 ### Commits
