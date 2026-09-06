@@ -1,3 +1,8 @@
+# [v3.10.3](https://github.com/crimera/piko-newx/releases/tag/v3.10.3) (2026-09-06)
+
+### Commits
+* [`5f0905a`](https://github.com/crimera/piko/commit/5f0905a302310e62279e1fc20b83345e60ecc696) fix(newx): stage inline downloads privately on Q+ to prevent public temp orphans
+
 # [v3.10.2](https://github.com/crimera/piko-newx/releases/tag/v3.10.2) (2026-09-06)
 
 ### Commits
