@@ -1,3 +1,8 @@
+# [v3.10.4](https://github.com/crimera/piko-newx/releases/tag/v3.10.4) (2026-09-06)
+
+### Commits
+* [`6801e73`](https://github.com/crimera/piko/commit/6801e732e976149a74cc3363cf30883614fcbb9a) fix(newx): add toggle to show inline download button on posts without media
+
 # [v3.10.3](https://github.com/crimera/piko-newx/releases/tag/v3.10.3) (2026-09-06)
 
 ### Commits
