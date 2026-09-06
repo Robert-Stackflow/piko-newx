@@ -1,3 +1,21 @@
+# [v3.10.2](https://github.com/crimera/piko-newx/releases/tag/v3.10.2) (2026-09-06)
+
+### Commits
+* [`c3fad63`](https://github.com/crimera/piko/commit/c3fad63a130bc2fbbbeea824a2147e41bcace1c6) feat(newx): add canonical URL toggle
+* [`e1f8991`](https://github.com/crimera/piko/commit/e1f8991fe5b732f77911927574e8bf2e4d06ed57) feat(newx): add custom For You topic selector
+* [`0b01176`](https://github.com/crimera/piko/commit/0b011766d5759e5f20c01eebdb7027d7240e5bbb) fix(newx): keep canonical URL hook reachable
+* [`ed3f648`](https://github.com/crimera/piko/commit/ed3f648dc1edde1af2972acf2a6f51c092d4a2b1) feat(newx): add For You filtering settings
+* [`05dfda1`](https://github.com/crimera/piko/commit/05dfda1c194116a89d676f04cda1056d5bce5f7a) fix(newx): mirror native topic sheet actions
+* [`5b0f0f9`](https://github.com/crimera/piko/commit/5b0f0f9920f21e2251878252b269095163d0085d) fix(newx): refresh and scroll For You after topic action
+* [`6094a31`](https://github.com/crimera/piko/commit/6094a31ead58e4a910df189c567912e4cb81e130) fix(newx): harden For You topic hook resolution
+* [`b1be556`](https://github.com/crimera/piko/commit/b1be5566a94fcea39a7ba477c53092c1c99080ce) fix(newx): scope verified post filtering
+* [`ef1166c`](https://github.com/crimera/piko/commit/ef1166ca2153c600aab130770054b04747f3942c) fix(newx): resolve filtered replies through parent chain
+* [`b813aa5`](https://github.com/crimera/piko/commit/b813aa5fda6fe0c81d7146d8f781d5d1703001a9) fix(newx): return last resolved root on alias-chain overflow
+* [`07e69e4`](https://github.com/crimera/piko/commit/07e69e484cda1fc4b7cbe2f355977d87e21bdd66) fix(newx): scope conversation aliasing to verified thread passes
+* [`0115153`](https://github.com/crimera/piko/commit/01151536e57dfd87edda0ee0107383350cf1ae04) feat(newx): keep thread owner replies in their own conversations
+* [`47e842f`](https://github.com/crimera/piko/commit/47e842ffe1011f1a00d2e5e778c0816afa6cfc3a) chore(newx): untrack filtering investigation docs
+* [`9552264`](https://github.com/crimera/piko/commit/95522646e25ebb59864e576c4641486b1f308146) feat(newx): add toggle for Filtered replies menu item
+
 # [v3.10.1](https://github.com/crimera/piko-newx/releases/tag/v3.10.1) (2026-09-05)
 
 ### Commits
