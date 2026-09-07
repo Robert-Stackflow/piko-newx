@@ -12,6 +12,10 @@ set -euo pipefail
 FORCE_PATCH="${FORCE_PATCH:-false}"
 CHANGELOG_APP_NAME="Twitter"
 CHANGELOG_APP_NAME_LOWER=$(printf '%s' "$CHANGELOG_APP_NAME" | tr '[:upper:]' '[:lower:]')
+PIKO_REPOSITORY="${PIKO_REPOSITORY:-https://github.com/crimera/piko.git}"
+PIKO_BRANCH="${PIKO_BRANCH:-x-lite}"
+PIKO_REPO_URL="${PIKO_REPO_URL:-https://github.com/crimera/piko}"
+PATCHES_BUNDLE_FILE="patches-bundle.json"
 PREVIOUS_TAG="${1:-$(git tag --merged HEAD --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || echo '')}"
 
 if [[ "$FORCE_PATCH" != "true" && "$FORCE_PATCH" != "false" ]]; then
@@ -19,12 +23,32 @@ if [[ "$FORCE_PATCH" != "true" && "$FORCE_PATCH" != "false" ]]; then
     exit 1
 fi
 
-# Determine commit range
-if [ -n "$PREVIOUS_TAG" ]; then
-    COMMIT_RANGE="${PREVIOUS_TAG}..HEAD"
+PIKO_DIRECTORY=$(mktemp -d)
+trap 'rm -rf "$PIKO_DIRECTORY"' EXIT
+
+git clone --quiet --single-branch --branch "$PIKO_BRANCH" \
+    "$PIKO_REPOSITORY" "$PIKO_DIRECTORY"
+
+PREVIOUS_PIKO_COMMIT=""
+if [ -f "$PATCHES_BUNDLE_FILE" ]; then
+    PREVIOUS_PIKO_COMMIT=$(jq -r '.piko_commit // empty' "$PATCHES_BUNDLE_FILE")
+fi
+
+# Generate semantic changes from the same upstream branch that is built for the
+# release.  The local repository only provides the previous release version.
+if [ -n "$PREVIOUS_PIKO_COMMIT" ]; then
+    if ! git -C "$PIKO_DIRECTORY" cat-file -e "${PREVIOUS_PIKO_COMMIT}^{commit}" 2>/dev/null; then
+        echo "Previous Piko commit is not present in the cloned x-lite branch: ${PREVIOUS_PIKO_COMMIT}" >&2
+        exit 1
+    fi
+    COMMIT_RANGE="${PREVIOUS_PIKO_COMMIT}..HEAD"
 else
     COMMIT_RANGE="HEAD"
 fi
+
+piko_git() {
+    git -C "$PIKO_DIRECTORY" "$@"
+}
 
 get_bump_level() {
     local commit_range="$1"
@@ -45,7 +69,7 @@ get_bump_level() {
             continue
         fi
 
-        commit_body=$(git log -1 --pretty=format:"%b" "$commit_hash" 2>/dev/null || echo "")
+        commit_body=$(piko_git log -1 --pretty=format:"%b" "$commit_hash" 2>/dev/null || echo "")
         if [[ "$commit_body" == *"BREAKING CHANGE:"* ]] || [[ "$commit_msg" == *"!:"* ]]; then
             has_breaking=true
         fi
@@ -60,7 +84,7 @@ get_bump_level() {
                     ;;
             esac
         fi
-    done < <(git log --pretty=format:"%h|%H|%s%n" "$commit_range" 2>/dev/null || true)
+    done < <(piko_git log --abbrev=7 --pretty=format:"%h|%H|%s%n" "$commit_range" 2>/dev/null || true)
 
     if [ "$has_breaking" = true ]; then
         echo "breaking"
@@ -106,7 +130,7 @@ while IFS= read -r line; do
     fi
 
     # Check for breaking change in commit body
-    commit_body=$(git log -1 --pretty=format:"%b" "$commit_hash" 2>/dev/null || echo "")
+    commit_body=$(piko_git log -1 --pretty=format:"%b" "$commit_hash" 2>/dev/null || echo "")
     if [[ "$commit_body" == *"BREAKING CHANGE:"* ]] || [[ "$commit_msg" == *"!:"* ]]; then
         HAS_BREAKING=true
     fi
@@ -125,12 +149,7 @@ while IFS= read -r line; do
             fi
         fi
 
-        REPO_URL="https://github.com/${GITHUB_REPOSITORY:-}"
-        if [ -n "$REPO_URL" ] && [ "$REPO_URL" != "https://github.com/" ]; then
-            commit_link="([${commit_hash}](${REPO_URL}/commit/${commit_hash_full}))"
-        else
-            commit_link=""
-        fi
+        commit_link="([${commit_hash}](${PIKO_REPO_URL}/commit/${commit_hash_full}))"
 
         entry="* **${changelog_scope}:** ${desc}"
         if [ -n "$commit_link" ]; then
@@ -164,13 +183,13 @@ while IFS= read -r line; do
                 ;;
         esac
     fi
-done < <(git log --pretty=format:"%h|%H|%s%n" "$COMMIT_RANGE" 2>/dev/null || true)
+done < <(piko_git log --abbrev=7 --pretty=format:"%h|%H|%s%n" "$COMMIT_RANGE" 2>/dev/null || true)
 
 BASE_BUMP_LEVEL=$(get_bump_level "$COMMIT_RANGE")
-LOCAL_BUMP_LEVEL="$BASE_BUMP_LEVEL"
+PIKO_BUMP_LEVEL="$BASE_BUMP_LEVEL"
 
-# Content can change without a conventional commit in this repository because
-# the release also tracks the upstream Piko branch and the compatible X APK.
+# Content can change without a conventional commit in Piko because the release
+# also tracks the compatible X APK.
 if [ "$FORCE_PATCH" = true ] && [ "$BASE_BUMP_LEVEL" = "none" ]; then
     BASE_BUMP_LEVEL="patch"
 fi
@@ -196,7 +215,7 @@ fi
 
 HAS_VERSION_BUMP=false
 if [ "$HAS_BREAKING" = true ] || [ "$HAS_FEAT" = true ] || [ "$HAS_PATCH" = true ] || \
-   { [ "$FORCE_PATCH" = true ] && [ "$LOCAL_BUMP_LEVEL" = "none" ]; }; then
+   { [ "$FORCE_PATCH" = true ] && [ "$PIKO_BUMP_LEVEL" = "none" ]; }; then
     HAS_VERSION_BUMP=true
 fi
 
@@ -235,7 +254,7 @@ NEW_VERSION="$BASE_VERSION"
 
 # Output whether we should skip release and the new version to stderr for workflow capture
 echo "skip_release=$([ "$HAS_VERSION_BUMP" = true ] && echo 'false' || echo 'true')" >&2
-echo "semantic_bump=$([ "$LOCAL_BUMP_LEVEL" != "none" ] && echo 'true' || echo 'false')" >&2
+echo "semantic_bump=$([ "$PIKO_BUMP_LEVEL" != "none" ] && echo 'true' || echo 'false')" >&2
 echo "bump_level=$BASE_BUMP_LEVEL" >&2
 echo "v${NEW_VERSION}" >&2
 

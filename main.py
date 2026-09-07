@@ -170,6 +170,20 @@ def format_commit_list(commits: list[github.GithubCommit] | None) -> str:
     return f"Piko commits since previous release:\n{entries}"
 
 
+def get_commits_not_in_changelog(
+    commits: list[github.GithubCommit] | None,
+    generated_changelog: str,
+) -> list[github.GithubCommit] | None:
+    if commits is None or not generated_changelog:
+        return commits
+
+    return [
+        commit
+        for commit in commits
+        if f"[{commit.sha[:7]}]" not in generated_changelog
+    ]
+
+
 def format_changelog_commit(commit: github.GithubCommit) -> str:
     match = CONVENTIONAL_COMMIT_PATTERN.fullmatch(commit.subject)
     scope = CHANGELOG_APP_NAME
@@ -266,18 +280,19 @@ def process(
     commits = get_piko_commits(
         previous_release, previous_piko_commit, piko_build.commit
     )
+    remaining_commits = get_commits_not_in_changelog(commits, generated_changelog)
 
     update_changelog(
         version=release_tag,
         tag=release_tag,
         new_patches=new_patches,
-        commits=commits,
+        commits=remaining_commits,
         generated_changelog=generated_changelog,
         previous_tag=previous_release.tag_name if previous_release else None,
     )
 
     patch_list = format_new_patch_list(new_patches)
-    commit_list = format_commit_list(commits)
+    commit_list = format_commit_list(remaining_commits)
     release_sections = [
         section for section in (generated_changelog, commit_list, patch_list) if section
     ]
