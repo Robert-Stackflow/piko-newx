@@ -1,9 +1,11 @@
 """Reproducibly build the localized NewX bundle without publishing a release."""
 
 import json
+import hashlib
 import os
 import shutil
 import subprocess
+import zipfile
 from pathlib import Path
 
 from build_piko import pre_build_cleanup, set_project_version
@@ -22,6 +24,9 @@ def main():
                     f"https://github.com/{config['repository']}.git"], cwd=source, check=True)
     subprocess.run(["git", "fetch", "--depth=1", "origin", config["commit"]], cwd=source, check=True)
     subprocess.run(["git", "checkout", "--detach", "FETCH_HEAD"], cwd=source, check=True)
+    test_env = {**os.environ, "PIKO_TEST_SOURCE": str(source)}
+    subprocess.run([os.sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
+                   cwd=ROOT, env=test_env, check=True)
     report = apply(source)
     print(json.dumps(report, indent=2), flush=True)
     # Cleanup is confined to the new generated source checkout above.
@@ -36,6 +41,20 @@ def main():
     if not artifact.is_file():
         raise FileNotFoundError(artifact)
     shutil.copy2(artifact, output / "patches.mpp")
+    # Include corresponding source and upstream notices with every binary artifact.
+    tracked = subprocess.check_output(["git", "ls-files"], cwd=source, text=True).splitlines()
+    added_resources = list((source / "patches/src/main/resources/addresources/values-zh-rCN").rglob("*.xml"))
+    source_files = {source / path for path in tracked} | set(added_resources)
+    with zipfile.ZipFile(output / "localized-source.zip", "w", zipfile.ZIP_DEFLATED) as archive:
+        for path in sorted(source_files):
+            if path.is_file():
+                archive.write(path, path.relative_to(source).as_posix())
+        for path in sorted((ROOT / "localization").rglob("*")):
+            if path.is_file() and "__pycache__" not in path.parts:
+                archive.write(path, "localization-overlay/" + path.relative_to(ROOT / "localization").as_posix())
+    for name in ("LICENSE", "NOTICE"):
+        shutil.copy2(source / name, output / name)
+    report["mpp_sha256"] = hashlib.sha256(artifact.read_bytes()).hexdigest()
     (output / "localization-report.json").write_text(
         json.dumps({**config, **report}, ensure_ascii=False, indent=2), encoding="utf-8")
 
