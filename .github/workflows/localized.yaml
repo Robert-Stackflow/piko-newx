@@ -3,7 +3,7 @@ name: Build Simplified Chinese NewX
 on:
   workflow_dispatch:
   push:
-    branches: [codex/zh-cn]
+    branches: [main, codex/zh-cn]
     paths:
       - localization/**
       - tests/**
