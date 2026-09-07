@@ -1,3 +1,17 @@
+## [3.10.7](https://github.com/crimera/piko-newx/compare/v3.10.6...v3.10.7) (2026-09-07)
+
+### 🐛 Bug Fixes
+* **Twitter:** format changelogs for Morphe app updates ([f66771a](https://github.com/crimera/piko-newx/commit/f66771a2880d3b08515cdb7cd93d6abbd8788735))
+
+### Commits
+* **Twitter - newx:** detect hidden media conflicts on AOSP ([9809bbd](https://github.com/crimera/piko/commit/9809bbd1e83aaea8bb105ca7d365bc5ee985e24c))
+* **Twitter - newx:** add hide post reply bar toggle ([68a1fb8](https://github.com/crimera/piko/commit/68a1fb866ebbf4936da0eb347d53806a3dc68d3f))
+* **Twitter:** add show poll results patch ([09f8bf7](https://github.com/crimera/piko/commit/09f8bf71f530e36c52b7cf52cc249fbb3c48fdb9))
+
+### New Patches
+* **Twitter:** NewX: Hide post reply bar
+* **Twitter:** NewX: Show poll results
+
 # [v3.10.6](https://github.com/crimera/piko-newx/releases/tag/v3.10.6) (2026-09-06)
 
 ### Commits
