@@ -1,0 +1,98 @@
+{
+  "settings/NewXSettingsActivity.java": [
+    ["setContentDescription(\"Back\")", "setContentDescription(str(\"piko_newx_l10n_back\"))", 1]
+  ],
+  "misc/FilteredRepliesPostOptionHandler.java": [
+    ["    private static final String OPTION_LABEL = \"Filtered replies\";\n", "", 1],
+    ["return OPTION_LABEL;", "return str(\"piko_newx_filtered_replies_option_label\");", 1],
+    ["Utils.showToastShort(\"Could not find the selected post\")", "Utils.showToastShort(str(\"piko_newx_l10n_post_missing\"))", 1],
+    ["Utils.showToastShort(\"Could not find the active screen\")", "Utils.showToastShort(str(\"piko_newx_l10n_screen_missing\"))", 1],
+    ["Utils.showToastShort(\"Could not identify the selected post\")", "Utils.showToastShort(str(\"piko_newx_l10n_post_unidentified\"))", 1],
+    ["Utils.showToastShort(\"Could not open filtered replies\")", "Utils.showToastShort(str(\"piko_newx_l10n_filtered_open_failed\"))", 1]
+  ],
+  "misc/NewXObjectBrowserHandler.java": [
+    ["    private static final String OPTION_LABEL = \"Browse Tweet Object\";\n", "", 1],
+    ["return OPTION_LABEL;", "return str(\"piko_newx_browse_tweet_object_title\");", 1],
+    ["fail(\"Could not find the selected post\")", "fail(str(\"piko_newx_l10n_post_missing\"))", 2],
+    ["fail(\"Could not find the active screen\")", "fail(str(\"piko_newx_l10n_screen_missing\"))", 1]
+  ],
+  "filteredreplies/FilteredRepliesDialog.java": [
+    ["Utils.showToastShort(\"No filtered replies for this post\")", "Utils.showToastShort(str(\"piko_newx_filtered_replies_empty\"))", 1],
+    ["sheet.setTitle(\"Filtered replies\")", "sheet.setTitle(str(\"piko_newx_filtered_replies_dialog_title\"))", 1],
+    ["\"1 reply hidden by verified accounts filter\"", "str(\"piko_newx_l10n_filtered_count_one\")", 1],
+    ["count + \" replies hidden by verified accounts filter\"", "str(\"piko_newx_l10n_filtered_count\", count)", 1],
+    ["Utils.showToastShort(\"Copied reply text\")", "Utils.showToastShort(str(\"piko_newx_filtered_replies_copied\"))", 1],
+    ["textView.setText(\"(No text content)\")", "textView.setText(str(\"piko_newx_l10n_no_text\"))", 1],
+    ["button.setText(\"Whitelisted ✓\")", "button.setText(str(\"piko_newx_filtered_replies_whitelisted\"))", 1],
+    ["button.setText(\"+ Whitelist\")", "button.setText(str(\"piko_newx_filtered_replies_whitelist_add\"))", 1],
+    ["\"Added @\" + screenName + \" to whitelist\"", "str(\"piko_newx_filtered_replies_whitelist_added\", screenName)", 1],
+    ["\"@\" + screenName + \" is already whitelisted\"", "str(\"piko_newx_l10n_already_whitelisted\", screenName)", 1],
+    ["\"Failed to whitelist: \" + e.getMessage()", "str(\"piko_newx_l10n_whitelist_failed\", e.getMessage())", 1],
+    ["badgeView.setText(badgeType);", "badgeView.setText(switch (badgeType.toLowerCase(Locale.ROOT)) {\n                case \"business\" -> str(\"piko_newx_hide_verified_account_types_business\");\n                case \"government\" -> str(\"piko_newx_hide_verified_account_types_government\");\n                case \"user\" -> str(\"piko_newx_hide_verified_account_types_user\");\n                case \"unknown\" -> str(\"piko_newx_hide_verified_account_types_unknown\");\n                default -> badgeType;\n            });", 1]
+  ],
+  "timeline/ForYouTopicFilterSheet.java": [
+    ["sheet.setTitle(\"For You topics\")", "sheet.setTitle(str(\"piko_newx_l10n_topics_title\"))", 1],
+    ["sheet.setSubtitle(\"Select topics to show in your For You timeline\")", "sheet.setSubtitle(str(\"piko_newx_l10n_topics_subtitle\"))", 1],
+    ["\"Snooze 1 topic\"", "str(\"piko_newx_l10n_snooze_one\")", 1],
+    ["\"Snooze \" + selectedCount + \" topics\"", "str(\"piko_newx_l10n_snooze_count\", selectedCount)", 1],
+    ["button.setText(\"Reset\")", "button.setText(str(\"piko_newx_l10n_reset\"))", 1]
+  ],
+  "misc/MediaPickerDialog.java": [
+    ["dialog.setTitle(\"Download media\")", "dialog.setTitle(str(\"piko_newx_l10n_download_media\"))", 2],
+    ["\"From @\" + username.trim()", "str(\"piko_newx_l10n_media_from\", username.trim())", 1],
+    ["\"Select media to save to your device\"", "str(\"piko_newx_l10n_media_subtitle\")", 1],
+    ["\"Download & Merge\"", "str(\"piko_newx_l10n_download_merge\")", 2],
+    ["\"Download All (\" + downloads.size() + \")\"", "str(\"piko_newx_l10n_download_all\", downloads.size())", 3],
+    ["\"Download (1)\"", "str(\"piko_newx_l10n_download_one\")", 1],
+    ["dialog.setTitle(\"Select media\")", "dialog.setTitle(str(\"piko_newx_l10n_select_media\"))", 1],
+    ["selectedCount + \" of \" + downloads.size() + \" selected\"", "str(\"piko_newx_l10n_selected_count\", selectedCount, downloads.size())", 1],
+    ["\"Download (\" + selectedCount + \")\"", "str(\"piko_newx_l10n_download_count\", selectedCount)", 1],
+    ["\"Merge (\" + selectedImageCount + \")\"", "str(\"piko_newx_l10n_merge_count\", selectedImageCount)", 1],
+    ["Utils.showToastShort(\"Link copied\")", "Utils.showToastShort(str(\"piko_newx_l10n_link_copied\"))", 2],
+    ["itemRow.setTitle(item.label +", "String localizedLabel = switch (item.label) {\n                case \"Image\" -> str(\"piko_newx_l10n_image\");\n                case \"Video\" -> str(\"piko_newx_l10n_video\");\n                default -> item.label;\n            };\n            itemRow.setTitle(localizedLabel +", 1]
+  ],
+  "misc/InlineDownloadButton.java": [
+    ["Utils.showToastShort(\"Could not find the selected post\")", "Utils.showToastShort(str(\"piko_newx_l10n_post_missing\"))", 1],
+    ["Utils.showToastShort(\"No downloadable media found\")", "Utils.showToastShort(str(\"piko_newx_l10n_no_download_media\"))", 1],
+    ["Utils.showToastShort(\"Could not download post media\")", "Utils.showToastShort(str(\"piko_newx_l10n_download_post_failed\"))", 1],
+    ["\"Download started\"", "str(\"piko_newx_l10n_download_started\")", 2],
+    ["\"Already downloaded or queued\"", "str(\"piko_newx_l10n_download_skipped\")", 2],
+    ["\"Could not start download\"", "str(\"piko_newx_l10n_download_start_failed\")", 2],
+    ["\"Downloading media from @\" + username", "str(\"piko_newx_l10n_downloading_from\", username)", 1],
+    ["\"Downloading media\"", "str(\"piko_newx_l10n_downloading\")", 1],
+    ["\"Download failed: \" + fileName", "str(\"piko_newx_l10n_download_failed_file\", fileName)", 1],
+    ["\"Could not finalize download: \" + pending.fileName", "str(\"piko_newx_l10n_download_finalize_failed\", pending.fileName)", 2],
+    ["\"Downloaded: \" + pending.fileName", "str(\"piko_newx_l10n_downloaded_file\", pending.fileName)", 1],
+    ["\"Download failed: \" + pending.fileName", "str(\"piko_newx_l10n_download_failed_file\", pending.fileName)", 1],
+    ["queued + \" downloads started\"", "str(\"piko_newx_l10n_downloads_started\", queued)", 2],
+    ["skipped + \" media already downloaded or queued\"", "str(\"piko_newx_l10n_media_skipped_count\", skipped)", 1],
+    ["\"1 download started\"", "str(\"piko_newx_l10n_download_started_one\")", 1],
+    ["\"1 already downloaded or queued\"", "str(\"piko_newx_l10n_skipped_one\")", 1],
+    ["skipped + \" already downloaded or queued\"", "str(\"piko_newx_l10n_skipped_count\", skipped)", 1],
+    ["\"1 failed\"", "str(\"piko_newx_l10n_failed_one\")", 1],
+    ["failed + \" failed\"", "str(\"piko_newx_l10n_failed_count\", failed)", 1]
+  ],
+  "misc/MediaMerger.java": [
+    ["Utils.showToastShort(\"At least 2 images are required to merge\")", "Utils.showToastShort(str(\"piko_newx_l10n_merge_minimum\"))", 1],
+    ["\"Downloading and merging \" + items.size() + \" images...\"", "str(\"piko_newx_l10n_merging\", items.size())", 1],
+    ["\"Failed to download image slice \" + sliceIndex", "str(\"piko_newx_l10n_slice_download_failed\", sliceIndex)", 1],
+    ["\"Failed to read dimensions of slice \" + (i + 1)", "str(\"piko_newx_l10n_slice_size_failed\", i + 1)", 1],
+    ["Utils.showToastShort(\"Out of memory while stitching images\")", "Utils.showToastShort(str(\"piko_newx_l10n_merge_out_of_memory\"))", 1],
+    ["\"Failed to decode image slice \" + (i + 1)", "str(\"piko_newx_l10n_slice_decode_failed\", i + 1)", 1],
+    ["\"Merged image already exists: \" + baseFileName", "str(\"piko_newx_l10n_merged_exists\", baseFileName)", 1],
+    ["\"Merged image saved: \" + fileName", "str(\"piko_newx_l10n_merged_saved\", fileName)", 1],
+    ["\"Failed to save merged image: \" + fileName", "str(\"piko_newx_l10n_merged_save_failed\", fileName)", 1],
+    ["Utils.showToastShort(\"Failed to merge images\")", "Utils.showToastShort(str(\"piko_newx_l10n_merge_failed\"))", 1]
+  ],
+  "misc/NewXShareImageHandler.java": [
+    ["Utils.showToastShort(\"Could not find the selected post\")", "Utils.showToastShort(str(\"piko_newx_l10n_post_missing\"))", 2],
+    ["Utils.showToastShort(\"Could not capture the rendered post\")", "Utils.showToastShort(str(\"piko_newx_l10n_capture_failed\"))", 3],
+    ["Utils.showToastShort(\"Could not identify the selected post\")", "Utils.showToastShort(str(\"piko_newx_l10n_post_unidentified\"))", 2],
+    ["return \"Share Tweet as Image\";", "return str(\"piko_newx_share_image_title\");", 1],
+    ["Utils.showToastShort(\"Post is no longer rendered\")", "Utils.showToastShort(str(\"piko_newx_l10n_post_no_longer_rendered\"))", 2],
+    ["Utils.showToastShort(\"Make the entire post visible before sharing\")", "Utils.showToastShort(str(\"piko_newx_l10n_post_fully_visible\"))", 1],
+    ["Utils.showToastShort(\"Rendered post is too large to capture\")", "Utils.showToastShort(str(\"piko_newx_l10n_post_too_large\"))", 1],
+    ["Utils.showToastShort(\"Could not allocate the post image\")", "Utils.showToastShort(str(\"piko_newx_l10n_allocate_image_failed\"))", 1],
+    ["Utils.showToastShort(\"Could not save the post image\")", "Utils.showToastShort(str(\"piko_newx_l10n_save_post_failed\"))", 1]
+  ]
+}
