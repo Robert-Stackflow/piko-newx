@@ -10,6 +10,8 @@ set -euo pipefail
 #   - skip_release=true|false, semantic_bump=true|false, bump_level, and version to stderr
 
 FORCE_PATCH="${FORCE_PATCH:-false}"
+CHANGELOG_APP_NAME="Twitter"
+CHANGELOG_APP_NAME_LOWER=$(printf '%s' "$CHANGELOG_APP_NAME" | tr '[:upper:]' '[:lower:]')
 PREVIOUS_TAG="${1:-$(git tag --merged HEAD --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || echo '')}"
 
 if [[ "$FORCE_PATCH" != "true" && "$FORCE_PATCH" != "false" ]]; then
@@ -48,12 +50,12 @@ get_bump_level() {
             has_breaking=true
         fi
 
-        if echo "$commit_msg" | grep -qE '^(feat|fix|update|ui|refactor|perf)(\([^)]+\))?!?:[[:space:]]+.+$'; then
-            case "$(echo "$commit_msg" | sed -E 's/^(feat|fix|update|ui|refactor|perf).*/\1/')" in
+        if echo "$commit_msg" | grep -qE '^(feat|fix|bump|update|ui|refactor|perf)(\([^)]+\))?!?:[[:space:]]+.+$'; then
+            case "$(echo "$commit_msg" | sed -E 's/^(feat|fix|bump|update|ui|refactor|perf).*/\1/')" in
                 feat)
                     has_feat=true
                     ;;
-                fix|update|ui|refactor|perf)
+                fix|bump|update|ui|refactor|perf)
                     has_patch=true
                     ;;
             esac
@@ -82,9 +84,7 @@ get_bump_level() {
 features=()
 fixes=()
 updates=()
-ui_changes=()
-refactoring=()
-performance=()
+improvements=()
 
 # Version bump flags
 HAS_BREAKING=false
@@ -111,14 +111,18 @@ while IFS= read -r line; do
         HAS_BREAKING=true
     fi
 
-    if echo "$commit_msg" | grep -qE '^(feat|fix|update|ui|refactor|perf)(\([^)]+\))?!?:[[:space:]]+.+$'; then
-        type=$(echo "$commit_msg" | sed -E 's/^(feat|fix|update|ui|refactor|perf).*/\1/')
-        scope=$(echo "$commit_msg" | sed -E 's/^[^(:]+\(([^)]+)\):.*/\1/' | grep -v "^$commit_msg$" || true)
+    if echo "$commit_msg" | grep -qE '^(feat|fix|bump|update|ui|refactor|perf)(\([^)]+\))?!?:[[:space:]]+.+$'; then
+        type=$(echo "$commit_msg" | sed -E 's/^(feat|fix|bump|update|ui|refactor|perf).*/\1/')
+        scope=$(echo "$commit_msg" | sed -nE 's/^[^(:]+\(([^)]+)\)!?:.*/\1/p')
         desc=$(echo "$commit_msg" | sed -E 's/^[^(:]+(\([^)]+\))?!?:[[:space:]]+//')
 
+        changelog_scope="$CHANGELOG_APP_NAME"
         if [ -n "$scope" ]; then
-            scope="${scope#\(}"
-            scope="${scope%\)}"
+            normalized_scope=$(printf '%s' "$scope" | tr '[:upper:]' '[:lower:]')
+            if [ "$normalized_scope" != "$CHANGELOG_APP_NAME_LOWER" ] &&
+               [[ "$normalized_scope" != "$CHANGELOG_APP_NAME_LOWER - "* ]]; then
+                changelog_scope="$CHANGELOG_APP_NAME - $scope"
+            fi
         fi
 
         REPO_URL="https://github.com/${GITHUB_REPOSITORY:-}"
@@ -128,10 +132,9 @@ while IFS= read -r line; do
             commit_link=""
         fi
 
-        if [ -n "$scope" ]; then
-            entry="- **${scope}**: ${desc} ${commit_link}"
-        else
-            entry="- ${desc} ${commit_link}"
+        entry="* **${changelog_scope}:** ${desc}"
+        if [ -n "$commit_link" ]; then
+            entry+=" ${commit_link}"
         fi
 
         case "$type" in
@@ -143,21 +146,21 @@ while IFS= read -r line; do
                 HAS_PATCH=true
                 fixes+=("$entry")
                 ;;
+            bump)
+                HAS_PATCH=true
+                updates+=("$entry")
+                ;;
             update)
                 HAS_PATCH=true
                 updates+=("$entry")
                 ;;
             ui)
                 HAS_PATCH=true
-                ui_changes+=("$entry")
+                improvements+=("$entry")
                 ;;
-            refactor)
+            refactor|perf)
                 HAS_PATCH=true
-                refactoring+=("$entry")
-                ;;
-            perf)
-                HAS_PATCH=true
-                performance+=("$entry")
+                improvements+=("$entry")
                 ;;
         esac
     fi
@@ -246,36 +249,28 @@ output_section() {
         return
     fi
 
-    echo "## ${title}"
+    echo "### ${title}"
     printf "%s\n" "${arr[@]}"
     echo ""
 }
 
-if [ ${#features[@]} -gt 0 ]; then
-    output_section "Features" "${features[@]}"
+if [ ${#fixes[@]} -gt 0 ]; then
+    output_section "🐛 Bug Fixes" "${fixes[@]}"
 fi
 
-if [ ${#fixes[@]} -gt 0 ]; then
-    output_section "Fixes" "${fixes[@]}"
+if [ ${#features[@]} -gt 0 ]; then
+    output_section "✨ New Features" "${features[@]}"
 fi
 
 if [ ${#updates[@]} -gt 0 ]; then
-    output_section "Updates" "${updates[@]}"
+    output_section "🚀 Updated App Support" "${updates[@]}"
 fi
 
-if [ ${#ui_changes[@]} -gt 0 ]; then
-    output_section "UI Changes" "${ui_changes[@]}"
-fi
-
-if [ ${#refactoring[@]} -gt 0 ]; then
-    output_section "Refactoring" "${refactoring[@]}"
-fi
-
-if [ ${#performance[@]} -gt 0 ]; then
-    output_section "Performance" "${performance[@]}"
+if [ ${#improvements[@]} -gt 0 ]; then
+    output_section "🔧 Improvements" "${improvements[@]}"
 fi
 
 if [ ${#features[@]} -eq 0 ] && [ ${#fixes[@]} -eq 0 ] && [ ${#updates[@]} -eq 0 ] && \
-   [ ${#ui_changes[@]} -eq 0 ] && [ ${#refactoring[@]} -eq 0 ] && [ ${#performance[@]} -eq 0 ]; then
+   [ ${#improvements[@]} -eq 0 ]; then
     echo "*No notable changes in this release.*"
 fi
