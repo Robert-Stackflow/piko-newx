@@ -1,3 +1,19 @@
+## [3.12.0](https://github.com/crimera/piko-newx/compare/v3.11.0...v3.12.0) (2026-09-08)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** gate For You topic sheet on reselect ([00c446a](https://github.com/crimera/piko/commit/00c446a5ae61bf35d83e23811350e127e78b8b62))
+* **Twitter - newx:** support refactored default media tab seed ([d7708ea](https://github.com/crimera/piko/commit/d7708ea92748a0b7aa954bb6d581929cdb39eb1e))
+* **Twitter - newx:** support canonical profile links after package move ([5cc1155](https://github.com/crimera/piko/commit/5cc11555186fa34debe4465d220e1a0abb0a5cae))
+* **Twitter - newx:** support highest media quality in newer builds ([cbb7f30](https://github.com/crimera/piko/commit/cbb7f307a8f9623ae7a894fbe8a26ccc5b2bae39))
+* **Twitter - newx:** support alpha timeline tab route arrays ([6cfc118](https://github.com/crimera/piko/commit/6cfc1189103e3f1e615abf74626258dc4bb8b979))
+
+### ✨ New Features
+* **Twitter:** experimental support for 12.25.0-alpha.01 ([cd76e4b](https://github.com/crimera/piko/commit/cd76e4b58441f3bf317f74138fe125a1f8b593b5))
+* **Twitter:** Improve NewX timeline patch compatibility ([b89697a](https://github.com/crimera/piko/commit/b89697a4a3398feedbcd61e27b1c03f2395ed8a8))
+
+### Commits
+* **Twitter:** update script ([5e76a62](https://github.com/crimera/piko/commit/5e76a627058375039b97799665244ce45e1d78a4))
+
 ## [3.11.0](https://github.com/crimera/piko-newx/compare/v3.10.7...v3.11.0) (2026-09-08)
 
 ### ✨ New Features
