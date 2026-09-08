@@ -1,3 +1,12 @@
+## [3.13.0](https://github.com/crimera/piko-newx/compare/v3.12.1...v3.13.0) (2026-09-08)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** allow user-initiated topic refresh ([7d4af7d](https://github.com/crimera/piko/commit/7d4af7d59e8986906794ef3bc5d9502e96de52aa))
+* **Twitter - newx:** preserve timeline position during deep-link loads ([a04d7c9](https://github.com/crimera/piko/commit/a04d7c9fa3ba1f5ca71126551be8483f2971337c))
+
+### ✨ New Features
+* **Twitter - newx:** add piko settings on sidebar ([e2976cf](https://github.com/crimera/piko/commit/e2976cf79e2327c3b15778b8a1d8ea75a021843a))
+
 ## [3.12.1](https://github.com/crimera/piko-newx/compare/v3.12.0...v3.12.1) (2026-09-08)
 
 ### 🐛 Bug Fixes
