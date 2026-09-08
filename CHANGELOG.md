@@ -1,3 +1,14 @@
+## [3.12.1](https://github.com/crimera/piko-newx/compare/v3.12.0...v3.12.1) (2026-09-08)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** gate startup refresh on saved timeline position ([449c6d2](https://github.com/crimera/piko/commit/449c6d26d81b4a66f472bd7c7ff98fd33ec570cb))
+* **Twitter - newx:** suppress populated timeline auto refresh ([2b48c7b](https://github.com/crimera/piko/commit/2b48c7b267f68bc5e3b28b580c56d6f7ca8c6865))
+* **Twitter - newx:** preserve initial timeline load ([2638690](https://github.com/crimera/piko/commit/26386906402fce01e1ad8af86d9997a99128e1e0))
+* **Twitter - NewX:** hook Glide thumbnail cache ([b6bed05](https://github.com/crimera/piko/commit/b6bed05f8c5146a814e2992cf25a74ba7a66979e))
+
+### Commits
+* **Twitter:** gate thumbnail cache backend ([41d3a33](https://github.com/crimera/piko/commit/41d3a33fe4a0a53b088af69b35441edac5564ef0))
+
 ## [3.12.0](https://github.com/crimera/piko-newx/compare/v3.11.0...v3.12.0) (2026-09-08)
 
 ### 🐛 Bug Fixes
