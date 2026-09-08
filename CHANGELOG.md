@@ -1,3 +1,14 @@
+## [3.11.0](https://github.com/crimera/piko-newx/compare/v3.10.7...v3.11.0) (2026-09-08)
+
+### ✨ New Features
+* **Twitter - newx:** add disable blur setting ([1fa4361](https://github.com/crimera/piko/commit/1fa43617f89053fdb1e9241217c200add48d3880))
+
+### Commits
+* **Twitter:** untrack recent documentation ([aedc22b](https://github.com/crimera/piko/commit/aedc22b1f22b23dc4076e4594beebc470a1f2088))
+
+### New Patches
+* **Twitter:** NewX: Disable blur effects
+
 ## [3.10.7](https://github.com/crimera/piko-newx/compare/v3.10.6...v3.10.7) (2026-09-07)
 
 ### 🐛 Bug Fixes
