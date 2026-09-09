@@ -1,3 +1,8 @@
+## [3.13.3](https://github.com/crimera/piko-newx/compare/v3.13.2...v3.13.3) (2026-09-09)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** restore photo viewer navigation inset ([ccb7457](https://github.com/crimera/piko/commit/ccb74571c35cedd8b34aa20deb8556749960477c))
+
 ## [3.13.2](https://github.com/crimera/piko-newx/compare/v3.13.1...v3.13.2) (2026-09-09)
 
 ### 🐛 Bug Fixes
