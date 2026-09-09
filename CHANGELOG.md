@@ -1,3 +1,9 @@
+## [3.13.2](https://github.com/crimera/piko-newx/compare/v3.13.1...v3.13.2) (2026-09-09)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** harden reply bar fingerprints ([ca6a72a](https://github.com/crimera/piko/commit/ca6a72ad425a3ff25a1eefa08e335c578378b63c))
+* **Twitter - newx:** eliminate post-detail reply bar gradient scrim and insets ([98ee98c](https://github.com/crimera/piko/commit/98ee98c84523b21963bb0dcfbf474855acc1402d))
+
 ## [3.13.1](https://github.com/crimera/piko-newx/compare/v3.13.0...v3.13.1) (2026-09-09)
 
 ### 🐛 Bug Fixes
