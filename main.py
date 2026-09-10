@@ -223,13 +223,7 @@ def process(
     release_sections = [
         section for section in (generated_changelog, patch_list) if section
     ]
-    additional_notes = "\n\n".join(release_sections)
-    additional_notes = f"{additional_notes}\n\n" if additional_notes else ""
-    message = f"""{additional_notes}Piko source:
-[x-lite@{piko_commit}](https://github.com/crimera/piko/commit/{piko_build.commit})
-X app version: `{latest_version.version}`
-Release version: `{release_tag}`
-"""
+    message = "\n\n".join(release_sections)
 
     signature = sign_artifact(PATCHES_MPP)
     release_assets = [PATCHES_MPP, PATCHES_LIST_ASSET, *( [signature] if signature else [] )]
