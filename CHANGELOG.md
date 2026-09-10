@@ -1,3 +1,23 @@
+## [3.17.0](https://github.com/crimera/piko-newx/compare/v3.16.0...v3.17.0) (2026-09-10)
+
+### 🐛 Bug Fixes
+* **Twitter:** glide thumbnail cache routing ([9c1eb4a](https://github.com/crimera/piko/commit/9c1eb4a16465f8d4d5bbdab2948c2f029b6ddb89))
+* **Twitter - newx:** preserve optional resolver fallbacks ([d583480](https://github.com/crimera/piko/commit/d5834805446cbd5537878688b52ba7c0ee53f805))
+* **Twitter - newx:** allow missing drawer footer divider ([696e98a](https://github.com/crimera/piko/commit/696e98aba0c450c30dd68430e44b50934e94f4f2))
+* **Twitter:** help center not getting hidden ([067a2ad](https://github.com/crimera/piko/commit/067a2ad3dbe8a6e8ae99c748c77baa9cc37229ce))
+
+### ✨ New Features
+* **Twitter - newx:** add default profile post sorting ([217326e](https://github.com/crimera/piko/commit/217326e18e8362dd3519ecbead237161b615a708))
+
+### 🔧 Improvements
+* **Twitter - newx:** rename default sorting patches ([d662eba](https://github.com/crimera/piko/commit/d662ebaac0d3134195b1521d9893784f381c8830))
+* **Twitter - newx:** enforce resolver cardinality ([fad1d44](https://github.com/crimera/piko/commit/fad1d44851a1adfd1c48b4617d26efb5376b95ae))
+
+### New Patches
+* **Twitter:** NewX: Set default media tab
+* **Twitter:** NewX: Set default profile post sorting
+* **Twitter:** NewX: Set default reply sorting
+
 ## [3.16.0](https://github.com/crimera/piko-newx/compare/v3.15.0...v3.16.0) (2026-09-10)
 
 ### ✨ New Features
