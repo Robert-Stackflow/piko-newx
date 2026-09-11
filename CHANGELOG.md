@@ -1,3 +1,11 @@
+## [3.18.0](https://github.com/crimera/piko-newx/compare/v3.17.0...v3.18.0) (2026-09-11)
+
+### ✨ New Features
+* **Twitter - newx:** use native in-app download notifications ([d748bf9](https://github.com/crimera/piko/commit/d748bf98692a78c748d0aabb273c33dfa50b00cc))
+
+### 🔧 Improvements
+* **Twitter - newx:** deprecate versions ([ea5edef](https://github.com/crimera/piko/commit/ea5edef5a57e1c8dc1b444a24239d29bff5f354f))
+
 ## [3.17.0](https://github.com/crimera/piko-newx/compare/v3.16.0...v3.17.0) (2026-09-10)
 
 ### 🐛 Bug Fixes
