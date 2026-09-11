@@ -1,3 +1,11 @@
+## [3.19.0](https://github.com/crimera/piko-newx/compare/v3.18.1...v3.19.0) (2026-09-11)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** scope timeline position restoration ([a238d89](https://github.com/crimera/piko/commit/a238d895f6c442de0d287f2a09ce9482824dc58f))
+
+### ✨ New Features
+* **Twitter - newx:** identify download notifications by username ([5554a69](https://github.com/crimera/piko/commit/5554a693357ef7113796496da59f59790cd2e8a8))
+
 ## [3.18.1](https://github.com/crimera/piko-newx/compare/v3.18.0...v3.18.1) (2026-09-11)
 
 ### 🐛 Bug Fixes
