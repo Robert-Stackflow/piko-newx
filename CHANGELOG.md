@@ -1,3 +1,8 @@
+## [3.18.1](https://github.com/crimera/piko-newx/compare/v3.18.0...v3.18.1) (2026-09-11)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** support alpha.02 drawer renderer ([a4a44ad](https://github.com/crimera/piko/commit/a4a44ad50c6568822290e81f570b68156bb5e347))
+
 ## [3.18.0](https://github.com/crimera/piko-newx/compare/v3.17.0...v3.18.0) (2026-09-11)
 
 ### ✨ New Features
