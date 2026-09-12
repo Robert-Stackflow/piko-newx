@@ -31,7 +31,7 @@ private fun MutableMethod.fields() = instructions.mapNotNull { it.getReference<F
 @Suppress("unused")
 val mediaHistoryPatch = bytecodePatch(
     name = "NewX: Local post and video history",
-    description = "Private history of opened posts and foreground video pages, including video swipes.",
+    description = "Private history of opened posts, photo galleries and foreground video pages, including video swipes.",
 ) {
     compatibleWith(Compatibility(name = "NewX", packageName = "com.twitter.android", apkFileType = ApkFileType.APKM,
         appIconColor = 0x000000, targets = listOf(AppTarget(version = "12.22.0-prod.01"))))
@@ -177,14 +177,123 @@ val mediaHistoryPatch = bytecodePatch(
             iget-wide v0, p0, $accountId
             return-wide v0
         """)
+        // Photos opened directly from a timeline use a separate gallery, not post detail.
+        // Resolve its live observed-post state, never its loader/prefetch or click handlers.
+        val galleryState = Fingerprint(definingClass = "Lcom/x/media/", name = "toString",
+            strings = listOf("MediaGalleryState(owner=", ", observedPost=")).requireSingle("gallery presentation state").originalClassDef
+        val galleryConstructor = Fingerprint(definingClass = "Lcom/x/media/", name = "<init>",
+            strings = listOf("x_lite_immersive_gallery_swipe_enabled"))
+            .requireSingle("gallery component constructor").method
+        if (galleryConstructor.refs().none { it.definingClass == galleryState.type && it.name == "<init>" })
+            throw PatchException("Media history: gallery constructor does not own presentation state")
+        val gallery = mutableClassDefBy(galleryConstructor.definingClass)
+        val galleryStateWriter = gallery.methods.filter { method -> method.returnType == "V" && method.parameterTypes.isEmpty() &&
+            method.refs().any { it.definingClass == galleryState.type && it.returnType == galleryState.type }
+        }.one("gallery observed-post state updater")
+        val galleryFlow = galleryStateWriter.fields().filter { it.definingClass == gallery.type &&
+            it.type.startsWith("Lkotlinx/coroutines/flow/") }.one("gallery live state flow")
+        val galleryValue = galleryStateWriter.refs().filter { it.definingClass == galleryFlow.type &&
+            it.name == "getValue" && it.parameterTypes.isEmpty() && it.returnType == OBJ }.one("gallery live state getter")
+        val galleryObserved = galleryState.fields.filter { it.type == postModels.contextualPostDescriptor }.one("gallery observed public post")
+        val galleryOwner = accountField(gallery.type)
+        if (galleryOwner.type != detailAccount.type) throw PatchException("Media history: gallery account identity type differs")
+        listOf(galleryFlow, galleryObserved, galleryOwner).forEach(::expose)
+        bridge("galleryAccount", 3, """
+            check-cast p0, ${gallery.type}
+            iget-object p0, p0, $galleryOwner
+            iget-wide v0, p0, $accountId
+            return-wide v0
+        """)
+        bridge("galleryPost", 1, """
+            check-cast p0, ${gallery.type}
+            iget-object p0, p0, $galleryFlow
+            invoke-virtual {p0}, $galleryValue
+            move-result-object p0
+            check-cast p0, ${galleryState.type}
+            if-eqz p0, :none
+            iget-object p0, p0, $galleryObserved
+            return-object p0
+            :none
+            const/4 p0, 0x0
+            return-object p0
+        """)
+        fun postDelegate(getter: MethodReference): MethodReference = mutableClassDefBy(getter.definingClass).methods
+            .filter { it.toString() == getter.toString() }.one("timeline delegate $getter").refs()
+            .filter { it.parameterTypes.isEmpty() && it.returnType == getter.returnType }.one("contextual delegate $getter")
+        val galleryIdGetter = postDelegate(models.postIdGetter)
+        val galleryTextGetter = postDelegate(models.postTextGetter)
+        bridge("galleryPostId", 3, """
+            check-cast p0, ${galleryIdGetter.definingClass}
+            invoke-interface {p0}, $galleryIdGetter
+            move-result-object p0
+            if-eqz p0, :none
+            iget-wide v0, p0, $idField
+            invoke-static {v0, v1}, Ljava/lang/Long;->toString(J)$STR
+            move-result-object p0
+            return-object p0
+            :none
+            const/4 p0, 0x0
+            return-object p0
+        """)
+        bridge("galleryText", 1, """
+            check-cast p0, ${galleryTextGetter.definingClass}
+            invoke-interface {p0}, $galleryTextGetter
+            move-result-object p0
+            return-object p0
+        """)
+        val authorAdapter = runtime.methods.filter { it.name == "getPostAuthorScreenName" }.one("post author adapter")
+        val authorField = authorAdapter.fields().filter { it.definingClass == postModels.canonicalPostDescriptor }.one("canonical post author")
+        val authorGetter = authorAdapter.refs().filter { it.parameterTypes.isEmpty() && it.returnType == STR }.one("author screen name")
+        val galleryCanonical = postModels.contextualCanonicalPostField
+        val galleryMedia = mediaModels.canonicalPostMediaField
+        listOf(galleryCanonical, galleryMedia, authorField).forEach(::expose)
+        bridge("galleryAuthor", 1, """
+            check-cast p0, ${postModels.contextualPostDescriptor}
+            iget-object p0, p0, $galleryCanonical
+            if-eqz p0, :none
+            check-cast p0, ${postModels.canonicalPostDescriptor}
+            iget-object p0, p0, $authorField
+            if-eqz p0, :none
+            check-cast p0, ${authorGetter.definingClass}
+            invoke-interface {p0}, $authorGetter
+            move-result-object p0
+            return-object p0
+            :none
+            const/4 p0, 0x0
+            return-object p0
+        """)
+        bridge("galleryMedia", 1, """
+            check-cast p0, ${postModels.contextualPostDescriptor}
+            iget-object p0, p0, $galleryCanonical
+            if-eqz p0, :none
+            check-cast p0, ${postModels.canonicalPostDescriptor}
+            iget-object p0, p0, $galleryMedia
+            return-object p0
+            :none
+            const/4 p0, 0x0
+            return-object p0
+        """)
+        val galleryLife = gallery.methods.filter { it.name == "getLifecycle" && it.parameterTypes.isEmpty() }.one("gallery lifecycle")
+        val galleryReturn = galleryConstructor.instructions.withIndex().filter { it.value.opcode == Opcode.RETURN_VOID }
+            .one("completed gallery construction").index
+        galleryConstructor.addInstructions(galleryReturn, "invoke-static/range {p0 .. p0}, $RUNTIME->bindGallery($OBJ)V")
+
         val videoLife = video.methods.filter { it.name == "getLifecycle" && it.parameterTypes.isEmpty() }.one("video lifecycle")
         val detailLife = detail.methods.filter { it.name == "getLifecycle" && it.parameterTypes.isEmpty() }.one("detail lifecycle")
-        if (videoLife.returnType != detailLife.returnType) throw PatchException("Media history: lifecycle contracts disagree")
+        if (videoLife.returnType != detailLife.returnType || galleryLife.returnType != detailLife.returnType)
+            throw PatchException("Media history: lifecycle contracts disagree")
         val lifeState = mutableClassDefBy(videoLife.returnType).methods.filter { it.name == "getState" && it.parameterTypes.isEmpty() }.one("lifecycle state")
         val state = mutableClassDefBy(lifeState.returnType)
         if (state.superclass != "Ljava/lang/Enum;" || !state.fields.any { it.name == "RESUMED" } || !state.fields.any { it.name == "DESTROYED" })
             throw PatchException("Media history: unsupported lifecycle states")
         bridge("lifecycle", 2, """
+            instance-of v0, p0, ${gallery.type}
+            if-eqz v0, :video
+            check-cast p0, ${gallery.type}
+            invoke-virtual {p0}, $galleryLife
+            move-result-object p0
+            goto :state
+            :video
             instance-of v0, p0, ${video.type}
             if-eqz v0, :detail
             check-cast p0, ${video.type}
@@ -309,6 +418,6 @@ val mediaHistoryPatch = bytecodePatch(
         val detailGetter = detail.methods.filter { it.name == "getState" && it.parameterTypes.isEmpty() }.one("detail state getter")
         detailGetter.addInstructions(0, "invoke-static/range {p0 .. p0}, $RUNTIME->bindPost($OBJ)V")
         dispatcher.addInstructions(0, "invoke-static/range {p0 .. p1}, $RUNTIME->videoEvent($OBJ$OBJ)V")
-        println("Media history: verified foreground detail/video observers; repository, playback and pagination unchanged")
+        println("Media history: verified foreground detail/gallery/video observers; repository, playback and pagination unchanged")
     }
 }

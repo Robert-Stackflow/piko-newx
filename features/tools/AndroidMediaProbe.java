@@ -3,7 +3,7 @@ public final class AndroidMediaProbe {
     public static void main(String[] args) throws Exception {
         android.os.Looper.prepareMainLooper();
         String[] names = {
-            "com.x.video.tab.v", "com.x.postdetail.n", "com.x.video.tab.g0",
+            "com.x.video.tab.v", "com.x.postdetail.n", "com.x.video.tab.g0", "com.x.media.l", "com.x.media.j0",
             "app.morphe.extension.newx.misc.InlineDownloadButton",
             "app.morphe.extension.newx.settings.SettingsRenderer",
             "app.morphe.extension.newx.mediatools.WatchSession",

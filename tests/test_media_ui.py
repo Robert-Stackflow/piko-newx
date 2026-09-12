@@ -8,6 +8,21 @@ JAVA = ROOT / "source/extensions/newx/src/main/java/app/morphe/extension/newx/me
 
 
 class MediaUiTests(unittest.TestCase):
+    def test_gallery_history_observes_live_public_post_not_thumbnails(self):
+        runtime = (JAVA / "MediaHistoryRuntime.java").read_text(encoding="utf-8")
+        patch = (ROOT / "source/patches/src/main/kotlin/app/crimera/patches/newx/mediatools/MediaHistoryPatch.kt").read_text(encoding="utf-8")
+        for contract in ("bindGallery(Object component)", "post = galleryPost(owner)",
+                         'if (post == null) { visit.session.reset(); return; }',
+                         "galleryPostId(post)", "previewItems(galleryMedia(post), null)",
+                         'visit.video ? "video" : "post"', 'foreground(owner)'):
+            self.assertIn(contract, runtime)
+        for contract in ('"MediaGalleryState(owner="', '", observedPost="',
+                         '"gallery live state getter"', '"gallery observed public post"',
+                         '"completed gallery construction"', 'galleryLife.returnType != detailLife.returnType'):
+            self.assertIn(contract, patch)
+        self.assertNotIn('Fingerprint(definingClass = "Lcom/x/media/imageloader/', patch)
+        self.assertNotIn('Class.forName', runtime)
+
     def test_flat_rows_and_header_only_clear_actions(self):
         for name, count in (("HistoryFragment.java", "history_count"), ("DownloadsFragment.java", "download_count")):
             source = (JAVA / name).read_text(encoding="utf-8")
