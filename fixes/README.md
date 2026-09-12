@@ -5,6 +5,15 @@ Target: original X `12.22.0-prod.01`, base APK SHA-256
 Piko source remains pinned to `bc03fce4352bcb7ee89299722d0e900af3fb8a82`.
 No X upgrade, video-setting change, Following/profile behavior change, or stable release replacement.
 
+Additional requested features: three independently persisted, default-on repost visibility toggles
+for For You, Following (including ranked Following), and Lists. They affect display only and preserve
+quote posts, cursors, repository data, module metadata and conversation ID consistency. Search,
+profiles, bookmarks and other timeline types are controls and remain unchanged.
+
+Home pinned List tab logos are hidden in both home renderers. This is scoped by the actual
+ListPinnedTimeline subtype; names, routes, sorting controls, community/topic logos, For You and
+Following remain untouched. A native tab logo bridge returns null only for a pinned List.
+
 ## Observed bytecode contract
 
 Reconnaissance names below document this APK, not patch-time identity anchors:

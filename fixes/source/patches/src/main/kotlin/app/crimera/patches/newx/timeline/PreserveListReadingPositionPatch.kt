@@ -39,7 +39,7 @@ private fun <T> List<T>.one(label: String): T = singleOrNull()
 
 private fun Method.refs() = implementation?.instructions?.mapNotNull { it.getReference<FieldReference>() }.orEmpty()
 
-private fun listBridge(owner: String, name: String, params: List<String>, result: String, registers: Int, body: String): MutableMethod {
+internal fun listBridge(owner: String, name: String, params: List<String>, result: String, registers: Int, body: String): MutableMethod {
     val placeholder = MethodImplementationBuilder(registers).apply {
         addInstruction("return-void".toInstruction())
     }.methodImplementation
