@@ -18,7 +18,17 @@ RUNTIME = "app.morphe.extension.newx.mediatools.MediaHistoryRuntime"
 EDITS = {
     f"{JAVA}/settings/NewXSettingsActivity.java": [(
         ".replace(containerId, new NewXSettingsFragment())",
-        ".replace(containerId, app.morphe.extension.newx.mediatools.HeaderToolsRuntime.initialScreen(getIntent()))")],
+        ".replace(containerId, app.morphe.extension.newx.mediatools.HeaderToolsRuntime.initialScreen(getIntent()))"), (
+        "    public void setPageTitle(CharSequence title) {",
+        "    private View customPageAction;\n\n"
+        "    public void setPageAction(View action) {\n"
+        "        if (toolbar == null) return;\n"
+        "        if (customPageAction != null) toolbar.removeView(customPageAction);\n"
+        "        customPageAction = action;\n"
+        "        if (action != null) toolbar.addView(action, new LinearLayout.LayoutParams(\n"
+        "                Theme.dpToPx(this, 48f), Theme.dpToPx(this, 48f)));\n"
+        "    }\n\n"
+        "    public void setPageTitle(CharSequence title) {")],
     f"{JAVA}/misc/InlineDownloadButton.java": DOWNLOAD_EDITS + [(
         "    static String thumbnailUrlForMedia(String mediaText) {",
         "    public static String thumbnailUrlForMedia(String mediaText) {")],

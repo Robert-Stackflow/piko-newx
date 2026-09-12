@@ -8,6 +8,22 @@ JAVA = ROOT / "source/extensions/newx/src/main/java/app/morphe/extension/newx/me
 
 
 class MediaUiTests(unittest.TestCase):
+    def test_flat_rows_and_header_only_clear_actions(self):
+        for name, count in (("HistoryFragment.java", "history_count"), ("DownloadsFragment.java", "download_count")):
+            source = (JAVA / name).read_text(encoding="utf-8")
+            self.assertIn("host.setPageAction(clear)", source)
+            self.assertIn("host.setPageAction(null)", source)
+            self.assertIn("list.setEmptyView(status)", source)
+            self.assertNotIn('text("' + count + '")', source)
+            self.assertNotIn("addView(clear", source)
+        ui = (JAVA / "MediaToolsUi.java").read_text(encoding="utf-8")
+        self.assertIn("ripple(card, Theme.surfaceContainer(c), 0)", ui)
+        self.assertIn("Theme.dividerColor(c)", ui)
+        self.assertNotIn("outer.setPadding", ui)
+        from features.apply_features import EDITS
+        activity = next(edits for name, edits in EDITS.items() if name.endswith("NewXSettingsActivity.java"))
+        self.assertTrue(any("toolbar.removeView(customPageAction)" in after for _, after in activity))
+
     def test_titles_and_no_duplicate_history_toggle(self):
         history = (JAVA / "HistoryFragment.java").read_text(encoding="utf-8")
         downloads = (JAVA / "DownloadsFragment.java").read_text(encoding="utf-8")
