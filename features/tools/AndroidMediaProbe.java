@@ -52,6 +52,16 @@ public final class AndroidMediaProbe {
             Object updater = Class.forName(header).getMethod("updater").invoke(null);
             updater.getClass().getMethod("invoke", Object.class).invoke(updater, new Object[]{null});
             System.out.println("ART_HEADER_CALLBACK_PASS 4; update invoked");
+            Class<?> function2 = Class.forName("kotlin.jvm.functions.Function2");
+            int[] invocations = {0};
+            Object nativeCallback = java.lang.reflect.Proxy.newProxyInstance(function2.getClassLoader(), new Class<?>[]{function2},
+                    (proxy, method, values) -> { if (method.getName().equals("invoke")) invocations[0]++; return null; });
+            Object wrapper = Class.forName(header).getMethod("wrapVideoActions", Object.class).invoke(null, nativeCallback);
+            if (wrapper == null) throw new AssertionError("Null native actions wrapper");
+            java.lang.reflect.Method forward = Class.forName(header).getDeclaredMethod("invokeNativeActions", Object.class, Object.class);
+            forward.setAccessible(true); forward.invoke(null, nativeCallback, new Object());
+            if (invocations[0] != 1) throw new AssertionError("Native action was not forwarded once");
+            System.out.println("ART_NATIVE_ACTION_FORWARD_PASS 1");
         }
         System.out.println("ART_MEDIA_PASS " + targets.length);
     }

@@ -13,7 +13,6 @@ import app.morphe.extension.newx.settings.NewXSettingsFragment;
 import app.morphe.extension.newx.utils.NewXUtils;
 import app.morphe.extension.shared.Utils;
 import kotlin.jvm.functions.Function1;
-import kotlin.jvm.functions.Function2;
 import kotlin.jvm.functions.Function3;
 import static app.morphe.extension.newx.mediatools.MediaToolsUi.*;
 
@@ -44,12 +43,13 @@ public final class HeaderToolsRuntime {
         }
     }
     public static final class VideoActions implements Function3<Object, Object, Object, Object> {
-        private final Function2<Object, Object, Object> action;
-        @SuppressWarnings("unchecked") public VideoActions(Object original) { action = (Function2<Object, Object, Object>) original; }
+        private final Object action;
+        public VideoActions(Object original) { action = original; }
         @Override public Object invoke(Object scope, Object composer, Object flags) {
-            render(composer, true); action.invoke(composer, 0); return null;
+            render(composer, true); invokeNativeActions(action, composer); return null;
         }
     }
+    private static void invokeNativeActions(Object action, Object composer) { throw new IllegalStateException("Native actions bridge missing"); }
     private HeaderToolsRuntime() {}
     public static Function1<?, ?> factory(boolean video) { return video ? VIDEO : HOME; }
     public static Function1<?, ?> updater() { return UPDATE; }
