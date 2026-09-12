@@ -20,8 +20,19 @@ Installed over listfix.5 without clearing data. Cold startup succeeded. During i
 multiple List scopes bound and processed data; the process remained alive and no new crash/ANR was
 recorded in the checked interval. Unexpected page/drag activity made those sequences unsuitable as
 controlled acceptance evidence; its source was not established. ADB then disconnected before a
-fresh controlled run could complete. Multi-List switching, refresh and restart acceptance remain
-INCOMPLETE. Do not promote this candidate as fully verified. Known safe fallback is listfix.5.
+fresh controlled run could complete. That initial run was INCOMPLETE.
+
+Controlled follow-up on 2026-09-12, 20:01-20:05 local time: three pinned List tabs were exercised
+without a new ANR or crash in the checked processes. Seven fresh-XML comparisons matched visible
+text and bounds, covering List return, two process restarts at different reading positions,
+manual scrolling without snapback, and an at-top pull whose settled visible posts were unchanged.
+The pull was followed by a new provider generation. This is basic device acceptance, not proof of
+preservation when new posts arrive ahead of a target. Initial data replacements logged missing full
+UI keys; those logs cannot distinguish removed posts from changed keys. No fallback request was
+issued for those missing-key generations. The last system ANR remained the older candidate's event.
+Large refreshes, pagination, network failures, explicit-top cancellation, account/filter changes
+and new-head-content preservation still require device acceptance. Keep this experimental;
+do not promote it as fully verified. Known safe fallback is listfix.5. Device content stays local.
 
 Rejected intermediate candidates:
 
