@@ -211,6 +211,39 @@ val preserveListReadingPositionPatch = bytecodePatch(
         val cachedItems = mutableClassDefBy(processor).fields.filter {
             it.type == "Ljava/util/List;" && AccessFlags.VOLATILE.isSet(it.accessFlags)
         }.one("native current-item cache")
+        // The native viewport cache is populated only for FOR_YOU. Merely selecting
+        // viewport-aware merge for Lists never works unless this producer is enabled too.
+        val viewportProducer = repository.methods.filter { method ->
+            method.returnType == "V" && method.parameterTypes.map(CharSequence::toString) ==
+                List(3) { "Ljava/util/List;" } && method.instructions.any {
+                    it.opcode == Opcode.IPUT_OBJECT && it.getReference<FieldReference>()?.toString() == cachedItems.toString()
+                }
+        }.one("viewport cache producer")
+        val viewportGate = viewportProducer.instructions.withIndex().filter {
+            it.value.opcode == Opcode.SGET_OBJECT && it.value.getReference<FieldReference>()?.let { f ->
+                f.definingClass == timeline && f.name == "FOR_YOU" && f.type == timeline
+            } == true
+        }.one("For You viewport cache gate")
+        val gateIndex = viewportGate.index
+        val comparison = viewportProducer.instructions.getOrNull(gateIndex + 1)
+        val captureStart = viewportProducer.instructions.getOrNull(gateIndex + 2)
+            ?: throw PatchException("List-position viewport capture has no continuation")
+        if (comparison?.opcode != Opcode.IF_NE || captureStart.opcode != Opcode.CHECK_CAST)
+            throw PatchException("List-position viewport cache gate changed")
+        val gateRegs = comparison as TwoRegisterInstruction
+        val gateTemp = (viewportGate.value as OneRegisterInstruction).registerA
+        val gateTimelineReg = gateRegs.registerA
+        if (gateRegs.registerB != gateTemp || gateTimelineReg == gateTemp ||
+            gateTimelineReg > 15 || gateTemp > 15 ||
+            viewportProducer.instructions.take(gateIndex).none {
+                it.opcode == Opcode.IGET_OBJECT && it.getReference<FieldReference>()?.toString() == repoTimeline.toString() &&
+                    (it as TwoRegisterInstruction).registerA == gateTimelineReg
+            }) throw PatchException("List-position viewport cache enum registers are unproven")
+        viewportProducer.addInstructionsWithLabels(gateIndex, """
+            invoke-static {v$gateTimelineReg}, $LIST_FIX->enabled($LF_ENUM)Z
+            move-result v$gateTemp
+            if-nez v$gateTemp, :capture_list_viewport
+        """.trimIndent(), ExternalLabel("capture_list_viewport", captureStart))
         val processorLoad = mergeCaller.instructions.take(mergeAt).withIndex().filter {
             it.value.opcode == Opcode.IGET_OBJECT && it.value.getReference<FieldReference>()?.let { f ->
                 f.definingClass == repository.type && f.type == processor
@@ -260,6 +293,6 @@ val preserveListReadingPositionPatch = bytecodePatch(
             invoke-virtual {v$resultComponent, v$resultBoolean}, $scrollBridge
             move-result v$resultBoolean
         """.trimIndent())
-        println("List-position fix: per-identifier restore/save, cached-list-only merge, pull-result jump guard installed")
+        println("List-position fix: per-identifier restore/save, List viewport cache producer, cached-list-only merge, pull-result jump guard installed")
     }
 }

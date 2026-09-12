@@ -11,6 +11,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ListFixTests(unittest.TestCase):
+    def test_viewport_cache_producer_is_enabled_before_consumption(self):
+        source = (ROOT / "fixes/source/patches/src/main/kotlin/app/crimera/patches/newx/timeline/PreserveListReadingPositionPatch.kt").read_text(encoding="utf-8")
+        self.assertIn('one("viewport cache producer")', source)
+        self.assertIn('ExternalLabel("capture_list_viewport", captureStart)', source)
+        self.assertIn('if-nez v$gateTemp, :capture_list_viewport', source)
+
     def test_null_array_path_does_not_join_holder_return(self):
         source = (ROOT / "fixes/source/patches/src/main/kotlin/app/crimera/patches/newx/timeline/PreserveListReadingPositionPatch.kt").read_text(encoding="utf-8")
         self.assertIn("if-nez v0, :restore\n            const/4 v0, 0x0\n            return-object v0\n            :restore", source)
