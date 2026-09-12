@@ -25,7 +25,11 @@ Reconnaissance names below document this APK, not patch-time identity anchors:
   The original request is already saved in the outer continuation; after construction it is reloaded
   from the original parameter/continuation. Changing only the constructor argument preserves request
   completion/error classification. The coroutine emits viewport-aware merge metadata and retains old items.
-- `g1.c` is the native volatile current-items list. Empty/null content must use the original merge mode.
+- `g1.c` is the native volatile viewport-items cache, not an automatically populated timeline cache.
+  Its sole producer is repository `v.h(above, visible, below)`, originally gated to FOR_YOU only.
+  This missing producer made the listfix.2/.3 merge eligibility check always false on Lists.
+  listfix.4 opts enabled LIST_POSTS into that existing producer; unrelated types retain the exact native path.
+  Empty/null viewport content still uses the original merge mode.
 - Result collector `urt.i.emit` consults a boolean policy then checks PULL_TO_REFRESH before sending
   an automatic scroll-to-top command. Only that policy result is overridden for Lists.
 
@@ -45,6 +49,34 @@ Register layouts are asserted. There is no runtime reflection of obfuscated clas
 - Existing Restore timeline position toggle is additionally respected for persistent save/restore.
 
 ## Limits and device acceptance checklist
+
+### listfix.4 follow-up
+
+The user reported that listfix.2 position retention was ineffective. A diagnostic-only listfix.3
+showed successful per-List save/restore but `content=false` for populated List refreshes. Exact DEX
+inspection identified the FOR_YOU-only producer described above. listfix.4 adds a three-instruction
+List opt-in before that gate, preserving the original producer bytecode and its branch behavior.
+
+Source: `e6e3a40`, successful Actions run `34686575530`; version `3.10.6-zh.2-listfix.4`.
+Final APK SHA-256: `ddb5ea2c614c05105140be99f13b1dd90701656c909b070e9d2caa43c0f582de`.
+Installed over the previous app without clearing data. 36 patches, 364 Chinese strings, same signer,
+16 KiB alignment, 12 unit-test cases, 93 final-DEX assertions and all 9 isolated ART checks passed.
+
+Observed on device:
+- List AUTO_REFRESH now reports populated viewport content and an eligible preservation merge.
+- A controlled List switch away/back showed the same post text fingerprint at identical bounds.
+- Another List, saved at index 10 / offset 909, restored after process restart to the same text
+  fingerprints at identical bounds. An additional List's restored offset stayed unchanged while
+  its index increased after head content was merged.
+- No new app crash was recorded for the two tested listfix.4 processes.
+- Some earlier/later UI sequences overlapped with user operation and are not acceptance evidence.
+  The manual-pull attempt did not reach a confirmed PULL_TO_REFRESH event and is not a passed test.
+  Large refreshes, error recovery and cache eviction still require further usage validation.
+
+Local diagnostics log only position integers, refresh policy facts and hashed List identifiers.
+Device dumps, screenshots and logs stay outside the repository and must not be uploaded.
+
+### Earlier candidate history
 
 The first `listfix.1` candidate was rejected by Android 16 at startup: the position bridge joined
 an int-array-typed null path with a holder path at one return, which ART inferred as Object.
