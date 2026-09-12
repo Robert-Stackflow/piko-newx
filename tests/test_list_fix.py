@@ -11,11 +11,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ListFixTests(unittest.TestCase):
-    def test_viewport_cache_producer_is_enabled_before_consumption(self):
-        source = (ROOT / "fixes/source/patches/src/main/kotlin/app/crimera/patches/newx/timeline/PreserveListReadingPositionPatch.kt").read_text(encoding="utf-8")
-        self.assertIn('one("viewport cache producer")', source)
-        self.assertIn('ExternalLabel("capture_list_viewport", captureStart)', source)
-        self.assertIn('if-nez v$gateTemp, :capture_list_viewport', source)
+    def test_native_refresh_is_not_modified(self):
+        patch = (ROOT / "fixes/source/patches/src/main/kotlin/app/crimera/patches/newx/timeline/PreserveListReadingPositionPatch.kt").read_text(encoding="utf-8")
+        helper = (ROOT / "fixes/source/extensions/newx/src/main/java/app/morphe/extension/newx/timeline/ListReadingPosition.java").read_text(encoding="utf-8")
+        for forbidden in ("VIEWPORT_AWARE_AUTO_REFRESH", "pikoListMergeMode", "pikoListScrollToTop", "capture_list_viewport", "preserveMerge"):
+            self.assertNotIn(forbidden, patch)
+            self.assertNotIn(forbidden, helper)
 
     def test_null_array_path_does_not_join_holder_return(self):
         source = (ROOT / "fixes/source/patches/src/main/kotlin/app/crimera/patches/newx/timeline/PreserveListReadingPositionPatch.kt").read_text(encoding="utf-8")
@@ -65,21 +66,9 @@ import app.morphe.extension.newx.settings.SettingsRegistry;
 import app.morphe.extension.shared.Utils;
 public class ListFixTest {
   enum T { LIST_POSTS, FOR_YOU, FOLLOWING, USER_PROFILE_POSTS, LIST_MEMBERS }
-  enum R { AUTO_REFRESH, PULL_TO_REFRESH, OLDER_THAN, NEWER_THAN, GAP, VIEWPORT_AWARE_AUTO_REFRESH }
   static int checks;
   static void check(boolean ok) { checks++; if (!ok) throw new AssertionError("check " + checks); }
-  static boolean merge(T t,R r,Object cursor,List<?> items) { return ListReadingPosition.preserveMerge(t,r,cursor,items); }
   public static void main(String[] args) {
-    for (T t : T.values()) for (R r : R.values()) {
-      check(merge(t,r,null,List.of("post")) == (t==T.LIST_POSTS && (r==R.AUTO_REFRESH || r==R.PULL_TO_REFRESH)));
-      check(!merge(t,r,new Object(),List.of("post")));
-      check(!merge(t,r,null,List.of()));
-      check(!merge(t,r,null,null));
-      check(!merge(t,r,null,List.of(List.of())));
-    }
-    check(merge(T.LIST_POSTS,R.PULL_TO_REFRESH,null,List.of(List.of(),List.of("post"))));
-    check(!merge(null,R.PULL_TO_REFRESH,null,List.of("post")));
-    check(!merge(T.LIST_POSTS,null,null,List.of("post")));
     check(Arrays.equals(ListReadingPosition.restore(T.LIST_POSTS,"LIST_POSTS1"),new int[]{0,0}));
     check(ListReadingPosition.save(T.LIST_POSTS,"LIST_POSTS1",23,41));
     check(ListReadingPosition.save(T.LIST_POSTS,"LIST_POSTS2",7,12));
@@ -93,9 +82,7 @@ public class ListFixTest {
     SettingsRegistry.values.put("newx.timeline.restore_position",false);
     check(ListReadingPosition.restore(T.LIST_POSTS,"LIST_POSTS1")==null);
     check(!ListReadingPosition.save(T.LIST_POSTS,"LIST_POSTS1",0,0));
-    check(merge(T.LIST_POSTS,R.PULL_TO_REFRESH,null,List.of("post")));
     SettingsRegistry.values.put("newx.timeline.list_reading_position",false);
-    check(!merge(T.LIST_POSTS,R.PULL_TO_REFRESH,null,List.of("post")));
     check(!ListReadingPosition.enabled(T.LIST_POSTS));
     SettingsRegistry.values.clear();
     Utils.context=null;

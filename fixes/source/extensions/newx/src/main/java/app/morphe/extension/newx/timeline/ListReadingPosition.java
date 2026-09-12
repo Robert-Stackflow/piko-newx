@@ -3,7 +3,6 @@ package app.morphe.extension.newx.timeline;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
-import java.util.List;
 import app.morphe.extension.newx.settings.SettingsRegistry;
 import app.morphe.extension.shared.Utils;
 
@@ -17,28 +16,6 @@ public final class ListReadingPosition {
     public static boolean enabled(Enum<?> type) {
         return type != null && "LIST_POSTS".equals(type.name())
                 && SettingsRegistry.getBooleanOrDefault(SETTING, true);
-    }
-
-    public static boolean preserveMerge(Enum<?> type, Enum<?> request, Object cursor, List<?> items) {
-        boolean eligible = enabled(type) && request != null && cursor == null && hasContent(items);
-        if (type != null && "LIST_POSTS".equals(type.name())) {
-            Log.d("PikoListPosition", "merge request=" + request + " cursor=" + (cursor != null)
-                    + " content=" + hasContent(items) + " eligible=" + eligible);
-        }
-        if (!eligible) return false;
-        String name = request.name();
-        return "AUTO_REFRESH".equals(name) || "PULL_TO_REFRESH".equals(name);
-    }
-
-    // A non-empty container of empty pages is not a populated timeline.
-    private static boolean hasContent(List<?> items) {
-        if (items == null) return false;
-        for (Object item : items) {
-            if (item instanceof List<?>) {
-                if (hasContent((List<?>) item)) return true;
-            } else if (item != null) return true;
-        }
-        return false;
     }
 
     private static boolean storeEnabled(Enum<?> type, String id) {
