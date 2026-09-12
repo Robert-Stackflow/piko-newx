@@ -13,6 +13,9 @@ import java.util.Iterator;
 import java.util.List;
 import app.morphe.extension.newx.utils.NewXUtils;
 import app.morphe.extension.shared.Utils;
+import app.morphe.extension.newx.misc.InlineDownloadButton;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /** UI-only observation. Native models are read through verified DEX bridges, never reflection. */
 public final class MediaHistoryRuntime {
@@ -169,8 +172,26 @@ public final class MediaHistoryRuntime {
         }
         if (visit.session.sample(account + "/" + id + "/" + media, true, true)) {
             MediaHistoryStore.record(account, id, media, visit.video ? "video" : "post",
-                    getPostAuthorScreenName(post), getPostText(post), 0);
+                    getPostAuthorScreenName(post), getPostText(post), 0, previews(post, visit.video ? media : null));
         }
+    }
+
+    private static String previews(Object post, String selectedMedia) {
+        JSONArray result = new JSONArray();
+        // Cold path, once per foreground visit, using the same semantic parser as Piko's media picker.
+        // No whole-post toString, credentials, signed video URL or background fetching.
+        List<?> items = postMedia(post);
+        if (items == null || items.isEmpty()) items = repostedMedia(post);
+        if (items == null) return "[]";
+        for (int i = 0; i < Math.min(16, items.size()) && result.length() < 4; i++) {
+            Object item = items.get(i);
+            if (item == null || selectedMedia != null && (!isVideo(item) || !selectedMedia.equals(mediaId(item)))) continue;
+            String url = MediaPreviewLoader.safeRemote(InlineDownloadButton.thumbnailUrlForMedia(item.toString()));
+            if (url.isEmpty()) continue;
+            try { result.put(new JSONObject().put("url", url).put("video", isVideo(item))); }
+            catch (org.json.JSONException ignored) {}
+        }
+        return result.toString();
     }
 
     private static void collectVideos(List<?> items, List<Object> output) {

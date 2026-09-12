@@ -35,7 +35,7 @@ val mediaHistoryPatch = bytecodePatch(
 ) {
     compatibleWith(Compatibility(name = "NewX", packageName = "com.twitter.android", apkFileType = ApkFileType.APKM,
         appIconColor = 0x000000, targets = listOf(AppTarget(version = "12.22.0-prod.01"))))
-    dependsOn(newXTimelineTextModelAdapterPatch, newXPostMediaModelResolutionPatch)
+    dependsOn(newXTimelineTextModelAdapterPatch, newXPostMediaModelResolutionPatch, mediaHeaderPatch)
     newXSettings {
         category(Categories.POST_ACTIONS_MEDIA) {
             customScreen(id = "newx.media_tools.downloads", strings = settingStrings("piko_newx_tools_downloads"), order = 509,

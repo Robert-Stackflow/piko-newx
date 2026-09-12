@@ -24,7 +24,7 @@ public final class MediaHistoryStore {
     private static SQLiteDatabase database;
 
     public record Entry(long account, String post, String media, String kind,
-                        String author, String text, long visited, long position) {}
+                        String author, String text, long visited, long position, String previews) {}
     public record Result(List<Entry> entries, boolean failed) {}
 
     private MediaHistoryStore() {}
@@ -40,13 +40,19 @@ public final class MediaHistoryStore {
         File file = new File(context.getNoBackupFilesDir(), "piko_media_history_v1.db");
         SQLiteDatabase opened = SQLiteDatabase.openOrCreateDatabase(file, null);
         try {
-            if (opened.getVersion() > 1) throw new IllegalStateException("Unsupported history schema");
+            if (opened.getVersion() > 2) throw new IllegalStateException("Unsupported history schema");
+            opened.beginTransaction();
+            try {
             opened.execSQL("CREATE TABLE IF NOT EXISTS history (account INTEGER NOT NULL, "
                     + "post TEXT NOT NULL, media TEXT NOT NULL, kind TEXT NOT NULL, "
                     + "author TEXT NOT NULL, body TEXT NOT NULL, visited INTEGER NOT NULL, "
                     + "position INTEGER NOT NULL, PRIMARY KEY(account,post,media,kind))");
             opened.execSQL("CREATE INDEX IF NOT EXISTS history_recent ON history(visited DESC)");
-            opened.setVersion(1);
+            if (opened.getVersion() < 2)
+                opened.execSQL("ALTER TABLE history ADD COLUMN previews TEXT NOT NULL DEFAULT '[]'");
+            opened.setVersion(2);
+            opened.setTransactionSuccessful();
+            } finally { opened.endTransaction(); }
             database = opened;
             return opened;
         } catch (RuntimeException error) {
@@ -56,13 +62,14 @@ public final class MediaHistoryStore {
     }
 
     public static void record(long account, String post, String media, String kind,
-                              String author, String text, long position) {
+                              String author, String text, long position, String previews) {
         if (!enabled() || account <= 0 || !numericId(post)
                 || !("post".equals(kind) || "video".equals(kind))) return;
         String safeMedia = media == null ? "" : media;
         if (safeMedia.length() > 256 || ("video".equals(kind) && safeMedia.isEmpty())) return;
         Entry entry = new Entry(account, post, safeMedia, kind, bounded(author, 128),
-                bounded(text, 1500), System.currentTimeMillis(), Math.max(0, position));
+                bounded(text, 1500), System.currentTimeMillis(), Math.max(0, position),
+                previews != null && previews.length() <= 18000 ? previews : "[]");
         synchronized (QUEUE_LOCK) {
             long epoch = EPOCH.get();
             IO.execute(() -> {
@@ -74,6 +81,7 @@ public final class MediaHistoryStore {
                     values.put("media", entry.media()); values.put("kind", entry.kind());
                     values.put("author", entry.author()); values.put("body", entry.text());
                     values.put("visited", entry.visited()); values.put("position", entry.position());
+                    values.put("previews", entry.previews());
                     db.beginTransaction();
                     try {
                         db.insertWithOnConflict("history", null, values, SQLiteDatabase.CONFLICT_REPLACE);
@@ -122,7 +130,8 @@ public final class MediaHistoryStore {
                             c.getLong(c.getColumnIndexOrThrow("account")), c.getString(c.getColumnIndexOrThrow("post")),
                             c.getString(c.getColumnIndexOrThrow("media")), c.getString(c.getColumnIndexOrThrow("kind")),
                             c.getString(c.getColumnIndexOrThrow("author")), c.getString(c.getColumnIndexOrThrow("body")),
-                            c.getLong(c.getColumnIndexOrThrow("visited")), c.getLong(c.getColumnIndexOrThrow("position"))));
+                            c.getLong(c.getColumnIndexOrThrow("visited")), c.getLong(c.getColumnIndexOrThrow("position")),
+                            c.getString(c.getColumnIndexOrThrow("previews"))));
                 }
             } catch (RuntimeException ignored) { failed = true; }
             done.accept(new Result(result, failed));
