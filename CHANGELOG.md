@@ -1,3 +1,8 @@
+## [3.19.2](https://github.com/crimera/piko-newx/compare/v3.19.1...v3.19.2) (2026-09-12)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** preserve inline download icon on recomposition ([baf3189](https://github.com/crimera/piko/commit/baf3189040abdfddb40cb76ecffd233846d8e995))
+
 ## [3.19.1](https://github.com/crimera/piko-newx/compare/v3.19.0...v3.19.1) (2026-09-11)
 
 ### 🐛 Bug Fixes
