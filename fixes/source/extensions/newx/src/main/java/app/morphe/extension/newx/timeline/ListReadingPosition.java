@@ -2,6 +2,7 @@ package app.morphe.extension.newx.timeline;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 import java.util.List;
 import app.morphe.extension.newx.settings.SettingsRegistry;
 import app.morphe.extension.shared.Utils;
@@ -19,7 +20,12 @@ public final class ListReadingPosition {
     }
 
     public static boolean preserveMerge(Enum<?> type, Enum<?> request, Object cursor, List<?> items) {
-        if (!enabled(type) || request == null || cursor != null || !hasContent(items)) return false;
+        boolean eligible = enabled(type) && request != null && cursor == null && hasContent(items);
+        if (type != null && "LIST_POSTS".equals(type.name())) {
+            Log.d("PikoListPosition", "merge request=" + request + " cursor=" + (cursor != null)
+                    + " content=" + hasContent(items) + " eligible=" + eligible);
+        }
+        if (!eligible) return false;
         String name = request.name();
         return "AUTO_REFRESH".equals(name) || "PULL_TO_REFRESH".equals(name);
     }
@@ -41,7 +47,10 @@ public final class ListReadingPosition {
     }
 
     public static int[] restore(Enum<?> type, String id) {
-        if (!storeEnabled(type, id)) return null;
+        if (!storeEnabled(type, id)) {
+            trace("restore-disabled", type, id, -1, -1);
+            return null;
+        }
         // Never fall through to the native LIST_POSTS-only cache, even on a cache miss.
         int[] result = new int[]{0, 0};
         try {
@@ -53,23 +62,35 @@ public final class ListReadingPosition {
         } catch (RuntimeException ignored) {
             // A malformed saved value must not crash navigation.
         }
+        trace("restore", type, id, result[0], result[1]);
         return result;
     }
 
     /** true means this List event is handled and must not populate the type-only cache. */
     public static boolean save(Enum<?> type, String id, int index, int offset) {
-        if (!storeEnabled(type, id)) return false;
+        if (!storeEnabled(type, id)) {
+            trace("save-disabled", type, id, index, offset);
+            return false;
+        }
         if (index < 0 || offset < 0) return true;
         try {
             SharedPreferences prefs = preferences();
             if (prefs != null) {
                 // Index and offset are published together; apply updates memory synchronously.
                 prefs.edit().putInt(id + ".index", index).putInt(id + ".offset", offset).apply();
+                trace("save", type, id, index, offset);
             }
         } catch (RuntimeException ignored) {
             // Still bypass the shared native List cache when persistence is unavailable.
         }
         return true;
+    }
+
+    private static void trace(String action, Enum<?> type, String id, int index, int offset) {
+        if (type == null || !"LIST_POSTS".equals(type.name())) return;
+        // Local diagnostics only: no raw List/account identifiers or post content.
+        Log.d("PikoListPosition", action + " list=" + (id == null ? "null" : Integer.toHexString(id.hashCode()))
+                + " index=" + index + " offset=" + offset);
     }
 
     private static SharedPreferences preferences() {
