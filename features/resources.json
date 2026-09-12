@@ -1,5 +1,5 @@
 {
-  "piko_newx_tools_history_title": ["Local browsing history", "本地浏览历史"],
+  "piko_newx_tools_history_title": ["Browsing history", "浏览历史"],
   "piko_newx_tools_history_summary": ["Posts opened and videos watched, including swipes in the video viewer. Stored only on this device.", "查看打开过的帖子和观看过的视频，包括在视频页滑动观看的视频。仅存本机。"],
   "piko_newx_tools_history_enabled_title": ["Record browsing history", "记录浏览历史"],
   "piko_newx_tools_history_enabled_summary": ["Off by default. Records opened posts and videos as soon as they become the foreground current page, even when paused; excludes prefetch and DMs. Turning off stops new records, but does not erase existing history.", "默认关闭。记录打开的帖子；视频成为前台当前页即记录，暂停也算，不记录预加载和私信。关闭后停止新增，但不删除已有历史。"],
