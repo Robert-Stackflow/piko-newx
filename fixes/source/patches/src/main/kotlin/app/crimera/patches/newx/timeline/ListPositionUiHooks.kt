@@ -70,6 +70,9 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
     """)
     component.methods.add(register)
     flowGetter.addInstructions(0,"invoke-virtual {p0}, $register")
+    // R8 inlined getState into List delegates, but the position getter remains delegated.
+    component.methods.filter { it.name=="pikoRestoreListPosition" }.unique("List position bridge")
+        .addInstructions(0,"invoke-virtual {p0}, $register")
 
     val disposal = Fingerprint(definingClass="Lcom/x/urt/ui/",returnType="V",parameters=emptyList()).scopedMatchAll()
         .map { it.method }.filter { m -> m.calls().any { it.definingClass == holder && it.name == "<init>" } }.unique("lifecycle position save")
@@ -80,8 +83,12 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
     val flowInterface = context.mutableClassDefBy(interfaceField.type).methods.filter {
         it.name == "getState" && it.parameterTypes.isEmpty() && it.returnType == flowGetter.returnType
     }.unique("delegating state interface")
+    val positionInterface = context.mutableClassDefBy(interfaceField.type).methods.filter {
+        it.returnType==holder && it.parameterTypes.isEmpty()
+    }.unique("delegating position interface")
     adapter("nativeFlow",2,"""
         check-cast p0, ${interfaceField.type}
+        invoke-interface {p0}, $positionInterface
         invoke-interface {p0}, $flowInterface
         move-result-object v0
         return-object v0
