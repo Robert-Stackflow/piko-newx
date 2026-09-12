@@ -74,7 +74,6 @@ public final class HistoryFragment extends NewXCustomScreenFragment {
         filter.setOnClickListener(v -> {
             selected = HistoryPresentation.nextMode(selected); updateFilter();
             main.removeCallbacks(refresh); load(true);
-            Utils.showToastShort(text(HistoryPresentation.label(selected)));
         });
         controls.addView(searchRow); root.addView(controls);
         status = label(c, "", 14, true); status.setGravity(Gravity.CENTER);

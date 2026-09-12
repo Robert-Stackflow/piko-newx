@@ -8,6 +8,14 @@ JAVA = ROOT / "source/extensions/newx/src/main/java/app/morphe/extension/newx/me
 
 
 class MediaUiTests(unittest.TestCase):
+    def test_history_category_switch_is_silent(self):
+        source = (JAVA / "HistoryFragment.java").read_text(encoding="utf-8")
+        callback = source.split("filter.setOnClickListener(v -> {", 1)[1].split("});", 1)[0]
+        self.assertNotIn("Toast", callback)
+        self.assertIn("updateFilter()", callback)
+        self.assertIn("load(true)", callback)
+        self.assertIn('text("history_mode")', source)
+
     def test_search_row_cycle_and_post_snapshot_presentation(self):
         source = (JAVA / "HistoryFragment.java").read_text(encoding="utf-8")
         self.assertNotIn("chips", source)
