@@ -10,6 +10,7 @@ from pathlib import Path
 
 from build_piko import pre_build_cleanup, set_project_version
 from localization.apply_localization import apply
+from fixes.apply_fixes import apply_fixes
 
 ROOT = Path(__file__).resolve().parent
 
@@ -28,6 +29,8 @@ def main():
     subprocess.run([os.sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
                    cwd=ROOT, env=test_env, check=True)
     report = apply(source)
+    report.update(apply_fixes(source))
+    report["translated_resources"] += report["fix_resources"]
     print(json.dumps(report, indent=2), flush=True)
     # Cleanup is confined to the new generated source checkout above.
     pre_build_cleanup(source)
@@ -45,6 +48,7 @@ def main():
     tracked = subprocess.check_output(["git", "ls-files"], cwd=source, text=True).splitlines()
     added_resources = list((source / "patches/src/main/resources/addresources/values-zh-rCN").rglob("*.xml"))
     source_files = {source / path for path in tracked} | set(added_resources)
+    source_files.update(source / path for path in report["fix_files"])
     with zipfile.ZipFile(output / "localized-source.zip", "w", zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(source_files):
             if path.is_file():
@@ -52,6 +56,9 @@ def main():
         for path in sorted((ROOT / "localization").rglob("*")):
             if path.is_file() and "__pycache__" not in path.parts:
                 archive.write(path, "localization-overlay/" + path.relative_to(ROOT / "localization").as_posix())
+        for path in sorted((ROOT / "fixes").rglob("*")):
+            if path.is_file() and "__pycache__" not in path.parts:
+                archive.write(path, "list-fix-overlay/" + path.relative_to(ROOT / "fixes").as_posix())
     for name in ("LICENSE", "NOTICE"):
         shutil.copy2(source / name, output / name)
     report["mpp_sha256"] = hashlib.sha256(artifact.read_bytes()).hexdigest()
