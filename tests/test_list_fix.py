@@ -25,6 +25,8 @@ class ListFixTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("javac") and shutil.which("java"), "Needs Java")
     def test_real_java_policy_and_per_list_persistence(self):
         fixtures = {
+            "android/util/Log.java": '''package android.util;
+public class Log { public static int d(String tag,String message) { return 0; } }''',
             "android/content/SharedPreferences.java": '''package android.content;
 public class SharedPreferences {
   private final java.util.Map<String,Integer> values = new java.util.HashMap<>();
