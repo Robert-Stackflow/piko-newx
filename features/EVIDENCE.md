@@ -100,3 +100,5 @@ Subsequent user request: install. dev12 successfully installed over dev11 on dev
 ### dev13 silent history category switching
 
 User requested no toast when cycling history categories. Removed only the filter click callback's mode toast; mode cycling, icon/color changes, current/next accessibility and long-press descriptions, query preservation and error toasts remain unchanged. 36 local tests pass, including a focused regression that the category callback has no Toast while still updating the icon and list. Build and installation pending.
+
+dev13 CI34702963651 (commite70ef6d) succeeded. APK SHA256 `27d564edeb45c7574664c64991f5b22df0340f98c55f9a47a72bf8be9374cd3b`, 176604534 bytes. All 37 patches, 423 translated resources, signing certificate and 16KiB alignment verified. ART passed 28 media classes and 14 list classes; actual header callbacks, native forwarding and author name/avatar bridge calls passed. APK copied to `/data/local/tmp/piko-media-dev13.apk` but **not installed**. Installed app remains dev12; interaction acceptance is not implied by build/probe checks.
