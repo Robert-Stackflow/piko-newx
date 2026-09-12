@@ -1,6 +1,40 @@
 # Experimental List reading-position repair
 
-## Current status: listfix.5 rollback
+## Current candidate: listfix.6.2 identity-based UI restoration
+
+Source `40184c3`, successful Actions run `34689191257`.
+Version `3.10.6-zh.2-listfix.6.2`; APK SHA-256:
+`c825e24b10b3b0296b513814deff843658cf2c03e8c7e0b5ec32a2f6b43f4c27`.
+
+The identity-based implementation is now present: account + List scoped persistence, final
+RegularItem UI key + offset, unique matching only, gesture/top cancellation and no old-item reinsertion.
+Final provider traversal and all snapshot reads run outside Compose's provider calculation.
+Unknown keys and missing/deleted targets are not converted into guessed ordinal positions.
+
+Verification: 14 unit-test cases (225 identity-state checks, 15 observer/lifecycle/race checks,
+15 obsolete-ordinal policy checks, 73 repost checks), 226 final-DEX assertions, all 14 initialized
+ART class probes, 364 Chinese resources, 36 patches, original signer and 16 KiB alignment passed.
+Repository merge methods and the native pull-result collector remain instruction-identical to stable.
+
+Installed over listfix.5 without clearing data. Cold startup succeeded. During initial device use,
+multiple List scopes bound and processed data; the process remained alive and no new crash/ANR was
+recorded in the checked interval. Unexpected page/drag activity made those sequences unsuitable as
+controlled acceptance evidence; its source was not established. ADB then disconnected before a
+fresh controlled run could complete. Multi-List switching, refresh and restart acceptance remain
+INCOMPLETE. Do not promote this candidate as fully verified. Known safe fallback is listfix.5.
+
+Rejected intermediate candidates:
+
+- listfix.6: R8-inlined List state getters bypassed scope registration. listfix.6.1 binds through the
+  delegated, non-inlined position getter instead.
+- listfix.6.1: user reproduced List-switch ANR (input dispatch timeout). Rolled back to listfix.5.
+  Reading LazyList snapshots inside provider calculation created a dangerous cyclic dependency;
+  listfix.6.2 defers those reads and has a regression test that fails on reads during construction.
+  ANR Java stacks were not obtained, so this source-level finding is not proof all ANR causes are gone.
+
+See [position-restoration-design.md](position-restoration-design.md) for contracts and remaining limits.
+
+## Historical baseline: listfix.5 rollback
 
 The user rejected listfix.4 after observing old posts mixed into refreshed content. Its earlier
 limited viewport tests below are historical evidence, not functional acceptance. Do not promote it.
