@@ -73,3 +73,7 @@ class MediaUiTests(unittest.TestCase):
         probe = (ROOT / "tools/AndroidMediaProbe.java").read_text()
         self.assertIn('getDeclaredMethod("invoke", parameters)', probe)
         self.assertIn('ART_HEADER_CALLBACK_PASS', probe)
+        self.assertIn('ART_NATIVE_ACTION_FORWARD_PASS', probe)
+        self.assertIn('private final Object action;', source)
+        self.assertNotIn('(Function2<Object', source)
+        self.assertIn('invokeNativeActions(action, composer)', source)

@@ -35,6 +35,9 @@ internal val mediaHeaderPatch = bytecodePatch(default = false) {
     execute {
         for ((name, arity) in listOf("HomeFactory" to 1, "VideoFactory" to 1, "HeaderUpdate" to 1, "VideoActions" to 3)) {
             val callback = mutableClassDefBy(HEADER.dropLast(1) + "$" + name + ";")
+            if (callback.methods.any { method -> method.instructions.any {
+                it.getReference<MethodReference>()?.definingClass?.contains("ExternalSyntheticThrowCCEIfNotNull") == true
+            } }) throw PatchException("Media header: shrinker replaced a native callback cast in $name")
             callback.methods.filter { it.name == "invoke" && it.returnType == "Ljava/lang/Object;" &&
                 it.parameterTypes.map(CharSequence::toString) == List(arity) { "Ljava/lang/Object;" } &&
                 !AccessFlags.ABSTRACT.isSet(it.accessFlags) && it.implementation != null
@@ -67,6 +70,20 @@ internal val mediaHeaderPatch = bytecodePatch(default = false) {
             return-void
         """.trimIndent())
         runtime.methods.remove(old); runtime.methods.add(render)
+        // The extension shrinker cannot see the host's Function2 implementors. Keep the native
+        // callable as Object in Java and introduce its cast/invoke only after extension shrinking.
+        val invokeOld = runtime.methods.filter { it.name == "invokeNativeActions" }.exact("native actions stub")
+        val invokeBridge = MutableMethod(ImmutableMethod(runtime.type, invokeOld.name, invokeOld.parameters, invokeOld.returnType,
+            invokeOld.accessFlags, invokeOld.annotations, invokeOld.hiddenApiRestrictions, MethodImplementationBuilder(3).methodImplementation))
+        invokeBridge.addInstructions(0, """
+            check-cast p0, Lkotlin/jvm/functions/Function2;
+            const/4 v0, 0x0
+            invoke-static {v0}, Ljava/lang/Integer;->valueOf(I)Ljava/lang/Integer;
+            move-result-object v0
+            invoke-interface {p0, p1, v0}, Lkotlin/jvm/functions/Function2;->invoke(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+            return-void
+        """.trimIndent())
+        runtime.methods.remove(invokeOld); runtime.methods.add(invokeBridge)
 
         // The header owns left/right weighted rows around the centered logo. Insert before the
         // consecutive right-row and outer-row closes, not at method entry or the skip branch.
