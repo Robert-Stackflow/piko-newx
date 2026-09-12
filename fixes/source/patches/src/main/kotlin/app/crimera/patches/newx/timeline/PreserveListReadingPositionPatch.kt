@@ -48,7 +48,7 @@ internal fun listBridge(owner: String, name: String, params: List<String>, resul
 @Suppress("unused")
 val preserveListReadingPositionPatch = bytecodePatch(
     name = "NewX: Preserve list reading position",
-    description = "Stores each List index and offset independently without changing native refresh or data.",
+    description = "Restores each account's List by displayed item identity without changing timeline data.",
 ) {
     compatibleWith(Compatibility(name = "NewX", packageName = "com.twitter.android",
         apkFileType = ApkFileType.APKM, appIconColor = 0x000000,
@@ -165,6 +165,6 @@ val preserveListReadingPositionPatch = bytecodePatch(
             return-void
         """.trimIndent(), ExternalLabel("native", continuation))
 
-        println("List-position baseline: per-identifier ordinal save/restore only; native refresh unchanged")
+        installListAnchorUi(component.type, holder, timelineGet, repoField, identityGet, identityField)
     }
 }

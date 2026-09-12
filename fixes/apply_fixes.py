@@ -6,10 +6,10 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent
 STRINGS = {
-    "piko_newx_list_reading_position_title": ["Save each List position separately", "分别保存各列表的位置"],
+    "piko_newx_list_reading_position_title": ["Restore List reading position", "恢复列表阅读位置"],
     "piko_newx_list_reading_position_summary": [
-        "Save each List index and offset for reopening. Native refresh is unchanged; changed content may shift the post. Restart after changing.",
-        "重新打开时按列表分别恢复序号和偏移。不改变原生刷新；内容变化后可能不再对应原帖。更改后请重启应用。"],
+        "Find the same displayed post per account and List. Missing posts are not reinserted. Dragging or jumping to top cancels restoration. Restart after changing.",
+        "按账号和列表找回同一帖子的位置。原帖不存在时不补回旧帖；拖动或主动回顶会取消恢复。更改后请重启应用。"],
 }
 for suffix, english, chinese in (("for_you", "For You", "为你推荐"), ("following", "Following", "正在关注"), ("lists", "Lists", "列表")):
     STRINGS[f"piko_newx_show_reposts_{suffix}_title"] = [f"Show reposts in {english}", f"{chinese}：展示转推"]
@@ -32,8 +32,8 @@ def apply_fixes(source, check_only=False):
         if not target.resolve().is_relative_to(source) or target.exists():
             raise ValueError(f"Fix would overwrite existing source: {relative}")
         planned.append((target, path.read_bytes()))
-    if len(planned) != 4:
-        raise ValueError("Expected exactly two patch files and two extensions")
+    if len(planned) != 7:
+        raise ValueError("Expected three patch files and four extensions")
     resources = []
     for locale, index in (("values", 0), ("values-zh-rCN", 1)):
         path = source / "patches/src/main/resources/addresources" / locale / "newx/strings.xml"
