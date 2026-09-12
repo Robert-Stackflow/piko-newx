@@ -2,7 +2,7 @@
   "repository": "crimera/piko",
   "commit": "bc03fce4352bcb7ee89299722d0e900af3fb8a82",
   "upstream_release": "v3.10.6",
-  "version": "3.10.6-zh.3-media.dev11",
+  "version": "3.10.6-zh.3-media.dev12",
   "media_tools_preview": true,
   "x_version": "12.22.0-prod.01"
 }

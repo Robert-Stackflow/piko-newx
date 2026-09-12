@@ -11,7 +11,7 @@ PACKAGE = f"{JAVA}/mediatools"
 MANIFEST = frozenset({
     f"{PACKAGE}/{name}.java" for name in (
         "WatchSession", "MediaHistoryStore", "DownloadTaskStore", "HistoryFragment", "MediaHistoryRuntime", "DownloadsFragment",
-        "ResumePolicy", "PlaybackStore", "VideoToolsRuntime", "MediaToolsUi", "MediaPreviewLoader", "HeaderToolsRuntime")
+        "ResumePolicy", "PlaybackStore", "VideoToolsRuntime", "MediaToolsUi", "MediaPreviewLoader", "HeaderToolsRuntime", "HistoryPresentation")
 }) | {f"patches/src/main/kotlin/app/crimera/patches/newx/mediatools/{name}.kt" for name in ("MediaHistoryPatch", "MediaHeaderPatch")}
 STORE = "app.morphe.extension.newx.mediatools.MediaHistoryStore"
 RUNTIME = "app.morphe.extension.newx.mediatools.MediaHistoryRuntime"

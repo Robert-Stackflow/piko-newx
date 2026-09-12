@@ -8,6 +8,36 @@ JAVA = ROOT / "source/extensions/newx/src/main/java/app/morphe/extension/newx/me
 
 
 class MediaUiTests(unittest.TestCase):
+    def test_search_row_cycle_and_post_snapshot_presentation(self):
+        source = (JAVA / "HistoryFragment.java").read_text(encoding="utf-8")
+        self.assertNotIn("chips", source)
+        self.assertNotIn("filters.addView", source)
+        for contract in ("searchRow.addView(filter", "HistoryPresentation.nextMode(selected)",
+                         'text("history_mode")', 'HistoryPresentation.mode(state.getInt("filter", 0))',
+                         "entry.displayName()", "entry.avatar()", "HistoryPresentation.tile(",
+                         'body.setVisibility(entry.text().isEmpty()', 'text("history_seen")'):
+            self.assertIn(contract, source)
+
+    def test_optional_author_columns_preserve_old_reader_compatibility(self):
+        source = (JAVA / "MediaHistoryStore.java").read_text(encoding="utf-8")
+        db = sqlite3.connect(":memory:")
+        db.execute("CREATE TABLE history (post TEXT PRIMARY KEY, body TEXT, previews TEXT)")
+        db.execute("INSERT INTO history VALUES ('123','kept','[]')")
+        db.execute("PRAGMA user_version=2")
+        for _ in range(2):
+            columns = {row[1] for row in db.execute("PRAGMA table_info(history)")}
+            for column in ("display_name", "avatar"):
+                migration = "ALTER TABLE history ADD COLUMN " + column + " TEXT NOT NULL DEFAULT ''"
+                self.assertIn(migration, source)
+                if column not in columns:
+                    db.execute(migration)
+        self.assertEqual(db.execute("SELECT post,body,previews FROM history").fetchone(), ("123", "kept", "[]"))
+        self.assertEqual(db.execute("SELECT display_name,avatar FROM history").fetchone(), ("", ""))
+        self.assertEqual(db.execute("PRAGMA user_version").fetchone()[0], 2)
+        self.assertIn("opened.setVersion(2)", source)
+        self.assertIn("MediaPreviewLoader.safeRemote(avatar)", source)
+        db.close()
+
     def test_gallery_history_observes_live_public_post_not_thumbnails(self):
         runtime = (JAVA / "MediaHistoryRuntime.java").read_text(encoding="utf-8")
         patch = (ROOT / "source/patches/src/main/kotlin/app/crimera/patches/newx/mediatools/MediaHistoryPatch.kt").read_text(encoding="utf-8")

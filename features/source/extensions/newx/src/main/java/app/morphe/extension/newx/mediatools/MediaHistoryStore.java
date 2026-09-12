@@ -24,7 +24,8 @@ public final class MediaHistoryStore {
     private static SQLiteDatabase database;
 
     public record Entry(long account, String post, String media, String kind,
-                        String author, String text, long visited, long position, String previews) {}
+                        String author, String text, long visited, long position, String previews,
+                        String displayName, String avatar) {}
     public record Result(List<Entry> entries, boolean failed) {}
 
     private MediaHistoryStore() {}
@@ -50,6 +51,15 @@ public final class MediaHistoryStore {
             opened.execSQL("CREATE INDEX IF NOT EXISTS history_recent ON history(visited DESC)");
             if (opened.getVersion() < 2)
                 opened.execSQL("ALTER TABLE history ADD COLUMN previews TEXT NOT NULL DEFAULT '[]'");
+            // Optional presentation columns keep schema 2 readable by dev10/11 on rollback.
+            java.util.Set<String> columns = new java.util.HashSet<>();
+            try (Cursor info = opened.rawQuery("PRAGMA table_info(history)", null)) {
+                while (info.moveToNext()) columns.add(info.getString(info.getColumnIndexOrThrow("name")));
+            }
+            if (!columns.contains("display_name"))
+                opened.execSQL("ALTER TABLE history ADD COLUMN display_name TEXT NOT NULL DEFAULT ''");
+            if (!columns.contains("avatar"))
+                opened.execSQL("ALTER TABLE history ADD COLUMN avatar TEXT NOT NULL DEFAULT ''");
             opened.setVersion(2);
             opened.setTransactionSuccessful();
             } finally { opened.endTransaction(); }
@@ -62,14 +72,15 @@ public final class MediaHistoryStore {
     }
 
     public static void record(long account, String post, String media, String kind,
-                              String author, String text, long position, String previews) {
+                              String author, String text, long position, String previews, String displayName, String avatar) {
         if (!enabled() || account <= 0 || !numericId(post)
                 || !("post".equals(kind) || "video".equals(kind))) return;
         String safeMedia = media == null ? "" : media;
         if (safeMedia.length() > 256 || ("video".equals(kind) && safeMedia.isEmpty())) return;
         Entry entry = new Entry(account, post, safeMedia, kind, bounded(author, 128),
                 bounded(text, 1500), System.currentTimeMillis(), Math.max(0, position),
-                previews != null && previews.length() <= 18000 ? previews : "[]");
+                previews != null && previews.length() <= 18000 ? previews : "[]",
+                bounded(displayName, 128), MediaPreviewLoader.safeRemote(avatar));
         synchronized (QUEUE_LOCK) {
             long epoch = EPOCH.get();
             IO.execute(() -> {
@@ -82,6 +93,7 @@ public final class MediaHistoryStore {
                     values.put("author", entry.author()); values.put("body", entry.text());
                     values.put("visited", entry.visited()); values.put("position", entry.position());
                     values.put("previews", entry.previews());
+                    values.put("display_name", entry.displayName()); values.put("avatar", entry.avatar());
                     db.beginTransaction();
                     try {
                         db.insertWithOnConflict("history", null, values, SQLiteDatabase.CONFLICT_REPLACE);
@@ -121,17 +133,18 @@ public final class MediaHistoryStore {
                 SQLiteDatabase db = database();
                 prune(db);
                 String term = bounded(search, 200).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-                String where = "(?='' OR kind=?) AND (body LIKE ? ESCAPE '\\' OR author LIKE ? ESCAPE '\\' OR post LIKE ? ESCAPE '\\')";
+                String where = "(?='' OR kind=?) AND (body LIKE ? ESCAPE '\\' OR author LIKE ? ESCAPE '\\' OR post LIKE ? ESCAPE '\\' OR display_name LIKE ? ESCAPE '\\')";
                 String filter = "video".equals(kind) || "post".equals(kind) ? kind : "";
                 String like = "%" + term + "%";
                 try (Cursor c = db.query("history", null, where,
-                        new String[]{filter, filter, like, like, like}, null, null, "visited DESC", "300")) {
+                        new String[]{filter, filter, like, like, like, like}, null, null, "visited DESC", "300")) {
                     while (c.moveToNext()) result.add(new Entry(
                             c.getLong(c.getColumnIndexOrThrow("account")), c.getString(c.getColumnIndexOrThrow("post")),
                             c.getString(c.getColumnIndexOrThrow("media")), c.getString(c.getColumnIndexOrThrow("kind")),
                             c.getString(c.getColumnIndexOrThrow("author")), c.getString(c.getColumnIndexOrThrow("body")),
                             c.getLong(c.getColumnIndexOrThrow("visited")), c.getLong(c.getColumnIndexOrThrow("position")),
-                            c.getString(c.getColumnIndexOrThrow("previews"))));
+                            c.getString(c.getColumnIndexOrThrow("previews")),
+                            c.getString(c.getColumnIndexOrThrow("display_name")), c.getString(c.getColumnIndexOrThrow("avatar"))));
                 }
             } catch (RuntimeException ignored) { failed = true; }
             done.accept(new Result(result, failed));
