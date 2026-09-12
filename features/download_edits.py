@@ -59,11 +59,15 @@ EDITS = [
             try {
                 DownloadManager manager = downloadManager(downloadContext);
                 if (manager == null) return;
-                if (pendingDownload(downloadContext, id) != null) {
+                PendingDownload pending = pendingDownload(downloadContext, id);
+                int status = pending == null ? -1 : downloadStatus(manager, id);
+                if (pending != null && status == DownloadManager.STATUS_SUCCESSFUL) {
                     // A publication failure retries publication, not the network transfer.
                     finishPendingDownload(downloadContext, manager, id);
                     success = pendingDownload(downloadContext, id) == null;
-                } else if (NewXUtils.isHttpUrl(url)) {
+                } else if (status != DownloadManager.STATUS_PENDING && status != DownloadManager.STATUS_RUNNING
+                        && status != DownloadManager.STATUS_PAUSED && NewXUtils.isHttpUrl(url)) {
+                    if (pending != null) removePendingDownload(downloadContext, manager, id);
                     String target = resolveTargetFileName(downloadContext, fileName, conflictBehavior(), mime);
                     if (target != null) {
                         success = queueDownload(downloadContext, manager, url, target, mime, post, author,
