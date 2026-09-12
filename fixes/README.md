@@ -1,5 +1,26 @@
 # Experimental List reading-position repair
 
+## Current status: listfix.5 rollback
+
+The user rejected listfix.4 after observing old posts mixed into refreshed content. Its earlier
+limited viewport tests below are historical evidence, not functional acceptance. Do not promote it.
+
+listfix.5 removes the refresh-mode override, List viewport-cache producer opt-in, and pull-result
+scroll-to-top guard. Native refresh is restored; localization, per-timeline repost visibility,
+text-only List tabs, and the limited per-List ordinal store remain. Existing data is not cleared.
+
+Source: `c742eff`; Actions run `34687319570`; version `3.10.6-zh.2-listfix.5`.
+The replacement identity-based UI-only approach is documented in
+[position-restoration-design.md](position-restoration-design.md). It is not shipped in listfix.5.
+
+Rollback APK SHA-256: `c6cc4eb336df5d25ca40ba11cc2cc8dde5c9e711128be5f79c9a1159a62bf75c`.
+36 applied patches, 364 Chinese resources, matching signer and 16 KiB alignment verified.
+12 unit-test cases, 173 final-DEX assertions and 9 initialized ART class checks passed.
+The native merge constructor path, viewport producer, pull-result collector and merge engine
+match the stable APK's instruction streams. Repost and text-only tab bindings remain present.
+Installed over the previous build without clearing app data; cold startup succeeded.
+This is rollback/startup verification, not acceptance of the future identity-based restoration.
+
 Target: original X `12.22.0-prod.01`, base APK SHA-256
 `51d43aec02604d097677d0cfc68c7639046ceed6b007610aee143c007979b48f`.
 Piko source remains pinned to `bc03fce4352bcb7ee89299722d0e900af3fb8a82`.
@@ -28,10 +49,10 @@ Reconnaissance names below document this APK, not patch-time identity anchors:
 - `g1.c` is the native volatile viewport-items cache, not an automatically populated timeline cache.
   Its sole producer is repository `v.h(above, visible, below)`, originally gated to FOR_YOU only.
   This missing producer made the listfix.2/.3 merge eligibility check always false on Lists.
-  listfix.4 opts enabled LIST_POSTS into that existing producer; unrelated types retain the exact native path.
+  Historical listfix.4 opted enabled LIST_POSTS into that existing producer; listfix.5 removes this.
   Empty/null viewport content still uses the original merge mode.
 - Result collector `urt.i.emit` consults a boolean policy then checks PULL_TO_REFRESH before sending
-  an automatic scroll-to-top command. Only that policy result is overridden for Lists.
+  an automatic scroll-to-top command. listfix.5 no longer overrides this policy result.
 
 ## Patch constraints
 
@@ -41,11 +62,9 @@ Register layouts are asserted. There is no runtime reflection of obfuscated clas
 
 - Store each List's index and pixel offset by native identifier in a separate preferences file.
 - Bypass the native type-only map for handled List save/restore events, including cache misses.
-- Only populated LIST_POSTS head-refresh merges (AUTO_REFRESH / PULL_TO_REFRESH with null cursor)
-  use VIEWPORT_AWARE_AUTO_REFRESH. Outer request type, spinner completion, errors and paging stay native.
-- Non-List timelines, initial empty loads, cursor pagination and explicit scroll-to-top actions keep
-  their original behavior. Existing home patches remain unchanged.
-- A dedicated Chinese/English Timeline toggle defaults on. Turn it off and restart for rollback.
+- All refresh merge modes, viewport producer gates and pull-result top actions remain native.
+- A dedicated Chinese/English Timeline toggle defaults on for the per-List ordinal store only.
+  It does not promise identity preservation after content changes. Turn it off and restart to disable it.
 - Existing Restore timeline position toggle is additionally respected for persistent save/restore.
 
 ## Limits and device acceptance checklist
