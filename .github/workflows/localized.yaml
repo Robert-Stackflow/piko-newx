@@ -3,10 +3,11 @@ name: Build Simplified Chinese NewX
 on:
   workflow_dispatch:
   push:
-    branches: [main, codex/zh-cn]
+    branches: [main, codex/zh-cn, codex/list-scroll-fix]
     paths:
       - localization/**
       - tests/**
+      - fixes/**
       - build_localized.py
       - .github/workflows/localized.yaml
 
