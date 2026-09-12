@@ -187,7 +187,15 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
 
     val regular = Fingerprint(definingClass="Lcom/x/urt/ui/",name="toString",strings=listOf("RegularItem(entryId=",", sortIndex=")).requireSingle("regular UI key")
     val regularId = regular.fieldForToStringLabel("RegularItem(entryId=")
-    val regularSort = regular.fieldForToStringLabel(", sortIndex=")
+    // R8 fused the string builder helper: bind the single long through its constructor instead.
+    val keyCtor = context.mutableClassDefBy(regular.originalClassDef.type).methods.filter {
+        it.name=="<init>" && it.parameterTypes.map(CharSequence::toString)==listOf(STR,"J")
+    }.unique("regular key identity constructor")
+    val sortWrite = keyCtor.instructions.filter { it.opcode==Opcode.IPUT_WIDE }.unique("sort identity write")
+    val regularSort = sortWrite.getReference<FieldReference>()!!
+    if(keyCtor.implementation!!.registerCount!=5 || (sortWrite as TwoRegisterInstruction).registerA!=3 ||
+        sortWrite.registerB!=1 || regular.method.fields().none { it.toString()==regularSort.toString() })
+        throw PatchException("List anchor: constructor sort identity mapping is unproven")
     // Unknown key variants (headers/loading/modules) are not persisted in this first implementation.
     // RegularItem is also used for each vertically expanded module item, preserving exact UI indices.
     if(regularId.type!=STR || regularSort.type!="J") throw PatchException("List anchor: regular key representation changed")

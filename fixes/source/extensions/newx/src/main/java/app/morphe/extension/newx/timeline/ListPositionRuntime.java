@@ -27,6 +27,8 @@ public final class ListPositionRuntime {
         Object previousLayout;
         long changedAt, lastWrite;
         String writtenKey;
+        String awaitingKey;
+        long requestedAt;
         int writtenOffset = -1;
         Session(String scope) { this.scope=scope; state=new ListAnchorState(load(scope)); }
     }
@@ -52,6 +54,7 @@ public final class ListPositionRuntime {
             INTERACTIONS.put(nativeInteraction(lazy),new WeakReference<>(lazy));
             WeakReference<Object> ref=PROVIDERS.get(lazy);
             if(ref!=null && ref.get()!=null) render(lazy,ref.get());
+            session.previousLayout=null; // an already measured retained tab is ready too
             trace("bind",session); schedule();
         } catch(RuntimeException error) { Log.d("PikoListAnchor","bind unavailable"); }
     }
@@ -86,14 +89,14 @@ public final class ListPositionRuntime {
         if(Looper.myLooper()!=Looper.getMainLooper()) return;
         WeakReference<Object> ref=INTERACTIONS.get(source);
         Session session=ref==null?null:ACTIVE.get(ref.get());
-        if(session!=null) { session.state.cancel(); trace("gesture-cancel",session); }
+        if(session!=null) { session.state.cancel(); session.awaitingKey=null; trace("gesture-cancel",session); }
     }
     public static void top(Object flow) {
         if(Looper.myLooper()!=Looper.getMainLooper()) return;
         String scope; synchronized(SCOPES) { scope=SCOPES.get(flow); }
         if(scope==null) return;
         for(Session session:new ArrayList<>(ACTIVE.values())) if(scope.equals(session.scope)) {
-            session.state.cancel(); trace("top-cancel",session);
+            session.state.cancel(); session.awaitingKey=null; trace("top-cancel",session);
         }
         try { SharedPreferences p=preferences(); if(p!=null) p.edit().remove(scope+".key").remove(scope+".offset").apply(); }
         catch(RuntimeException ignored) {}
@@ -110,22 +113,30 @@ public final class ListPositionRuntime {
             try {
                 int[] snapshot=nativeSnapshot(lazy);
                 if(snapshot==null || snapshot[2]!=0 || session.provider.get()==null) continue;
+                if(session.awaitingKey!=null) {
+                    if(session.awaitingKey.equals(nativeKey(nativeMeasuredKey(lazy)))) session.awaitingKey=null;
+                    else if(SystemClock.uptimeMillis()-session.requestedAt<1000) continue;
+                    else { session.awaitingKey=null; session.state.cancel(); }
+                }
                 if(session.state.pending()) {
                     if(nativeMeasuredKey(lazy)==null || nativeLayout(lazy)==session.previousLayout) continue;
                     if(SystemClock.uptimeMillis()-session.changedAt<240) continue;
                     int[] target=session.state.resolve(session.state.generation());
                     if(target!=null) {
+                        session.awaitingKey=session.state.current().key;
+                        session.requestedAt=SystemClock.uptimeMillis();
                         nativeRequest(lazy,target[0],target[1]); trace("restore",session); continue;
                     }
                     trace("missing",session);
                 }
                 observe(lazy,session); persist(session,false);
+                if(!session.state.pending()) session.previousLayout=null;
             } catch(RuntimeException error) { session.state.cancel(); }
         }
         schedule();
     }
     private static void observe(Object lazy,Session session) {
-        if(session.provider.get()==null || session.state.pending()) return;
+        if(session.provider.get()==null || session.state.pending() || session.awaitingKey!=null) return;
         try {
             int[] snapshot=nativeSnapshot(lazy);
             if(snapshot!=null && snapshot[2]==0)
