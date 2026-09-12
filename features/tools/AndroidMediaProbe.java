@@ -16,11 +16,20 @@ public final class AndroidMediaProbe {
             "app.morphe.extension.newx.mediatools.PlaybackStore",
             "app.morphe.extension.newx.mediatools.VideoToolsRuntime"
         };
-        for (String name : names) {
+        String[] targets = args.length == 0 ? names : args;
+        int failures = 0;
+        for (String name : targets) {
+            System.out.println("ART checking: " + name);
+            try {
             Class<?> type = Class.forName(name, true, AndroidMediaProbe.class.getClassLoader());
             type.getDeclaredMethods(); type.getDeclaredConstructors();
             System.out.println("ART verified: " + name);
+            } catch (Throwable error) {
+                failures++;
+                error.printStackTrace(System.out);
+            }
         }
-        System.out.println("ART_MEDIA_PASS " + names.length);
+        if (failures > 0) { System.out.println("ART_MEDIA_FAIL " + failures); System.exit(1); }
+        System.out.println("ART_MEDIA_PASS " + targets.length);
     }
 }

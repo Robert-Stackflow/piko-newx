@@ -144,7 +144,9 @@ val mediaHistoryPatch = bytecodePatch(
             iget-object p0, p0, $detailSuccess
             if-eqz p0, :none
             iget-object p0, p0, $successItems
+            return-object p0
             :none
+            const/4 p0, 0x0
             return-object p0
         """)
         fun accountField(owner: String): FieldReference = mutableClassDefBy(owner).fields.filter { field ->
@@ -250,7 +252,9 @@ val mediaHistoryPatch = bytecodePatch(
             iget-object p0, p0, $envelopePost
             invoke-static {p0}, $RUNTIME->postId($OBJ)$STR
             move-result-object p0
+            return-object p0
             :none
+            const/4 p0, 0x0
             return-object p0
         """)
         bridge("progressMediaId", 1, """
@@ -261,7 +265,9 @@ val mediaHistoryPatch = bytecodePatch(
             iget-object p0, p0, $progressMedia
             invoke-interface {p0}, $mediaId
             move-result-object p0
+            return-object p0
             :none
+            const/4 p0, 0x0
             return-object p0
         """)
         val seek = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString", strings = listOf("BarSeekTo(progress="))

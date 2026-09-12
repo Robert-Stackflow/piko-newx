@@ -30,6 +30,7 @@ History clearing invalidates older queued writes. The UI's queue monitor is neve
 - dev3 compiled but stopped during APK patching on a cloned model adapter signature comparison. Descriptor comparisons now use string values.
 - dev4 applied all 37 selected patches to the frozen X APK, including every new semantic bridge; final resource/DEX/ART validation follows.
 - dev5 also fixes explicit retry after a missing system download and persists terminal task states for bounded retention.
+- dev4 passed signature, 413 translated resources and the 14-class list ART probe, but the new-module probe caught incompatible null-branch type merges in progress ID getters. Neither dev4 nor dev5 was installed. dev6 uses separate explicit null returns (also for detail items) and adds a regression check.
 - Runtime acceptance is **not yet complete**. Do not label these previews as stable or overwrite the installed listfix.6.2 before signature, final DEX and isolated ART checks pass.
 
 Planned device controls: history disabled, opened post, paused video, multiple video swipes, preload exclusion, background/foreground, search/filter, clearing, same-video resume after reopening/restarting, user seek override, lock/unlock/system Back, download completion/open/source/retry, and existing home List switching/position restoration.
