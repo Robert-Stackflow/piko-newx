@@ -6,10 +6,10 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent
 STRINGS = {
-    "piko_newx_list_reading_position_title": ["Keep list reading position (experimental)", "保持列表阅读位置（实验性）"],
+    "piko_newx_list_reading_position_title": ["Save each List position separately", "分别保存各列表的位置"],
     "piko_newx_list_reading_position_summary": [
-        "Keep your place when refreshing Lists and save each List separately. Restart after changing this setting.",
-        "刷新列表时保持阅读位置，并分别记住每个列表的位置。更改后请重启应用。"],
+        "Save each List index and offset for reopening. Native refresh is unchanged; changed content may shift the post. Restart after changing.",
+        "重新打开时按列表分别恢复序号和偏移。不改变原生刷新；内容变化后可能不再对应原帖。更改后请重启应用。"],
 }
 for suffix, english, chinese in (("for_you", "For You", "为你推荐"), ("following", "Following", "正在关注"), ("lists", "Lists", "列表")):
     STRINGS[f"piko_newx_show_reposts_{suffix}_title"] = [f"Show reposts in {english}", f"{chinese}：展示转推"]
