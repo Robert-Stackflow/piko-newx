@@ -28,15 +28,19 @@ public final class MediaHistoryRuntime {
     private static final class Visit {
         final WeakReference<Object> owner;
         final boolean video;
+        final boolean gallery;
         final WatchSession session = new WatchSession();
         String media;
-        Visit(Object owner, boolean video) { this.owner = new WeakReference<>(owner); this.video = video; }
+        Visit(Object owner, boolean video, boolean gallery) {
+            this.owner = new WeakReference<>(owner); this.video = video; this.gallery = gallery;
+        }
     }
 
     private MediaHistoryRuntime() {}
 
     // Called at the native getter/dispatcher boundary. Do not read Compose state synchronously.
     public static void bindPost(Object component) { bind(component, null, false); }
+    public static void bindGallery(Object component) { bind(component, null, false, true); }
     public static void videoEvent(Object component, Object event) {
         if (event != null && isSeekEvent(event)) VideoToolsRuntime.userSeek(component);
         // Playback emits frequently. Do not enqueue UI work for progress or prefetch events.
@@ -44,6 +48,10 @@ public final class MediaHistoryRuntime {
     }
 
     private static void bind(Object component, Object event, boolean video) {
+        bind(component, event, video, false);
+    }
+
+    private static void bind(Object component, Object event, boolean video, boolean gallery) {
         if (component == null) return;
         WeakReference<Object> weak = new WeakReference<>(component);
         MAIN.post(() -> {
@@ -56,7 +64,7 @@ public final class MediaHistoryRuntime {
                 if (visit == null) {
                     VISITS.removeIf(item -> item.owner.get() == null);
                     if (VISITS.size() >= 12) VISITS.remove(0);
-                    visit = new Visit(owner, video);
+                    visit = new Visit(owner, video, gallery);
                     VISITS.add(visit);
                 }
                 if (video && event != null && isMediaSelectionEvent(event)) visit.media = selectionMediaId(event);
@@ -130,7 +138,7 @@ public final class MediaHistoryRuntime {
         if (!MediaHistoryStore.enabled() && (!visit.video || !VideoToolsRuntime.enabled())) {
             visit.session.reset(); VideoToolsRuntime.inactive(owner); return;
         }
-        long account = visit.video ? videoAccount(owner) : postAccount(owner);
+        long account = visit.gallery ? galleryAccount(owner) : visit.video ? videoAccount(owner) : postAccount(owner);
         if (account <= 0) return;
         Object post;
         String media = "";
@@ -150,13 +158,17 @@ public final class MediaHistoryRuntime {
             if (selected == null && videos.size() == 1) selected = videos.get(0);
             if (selected == null) return;
             media = mediaId(selected);
+        } else if (visit.gallery) {
+            // Only the gallery's live observed public post. Profile/DM images have no such post.
+            post = galleryPost(owner);
+            if (post == null) { visit.session.reset(); return; }
         } else {
             String focal = focalPostId(owner);
             if (focal == null) return;
             post = findPost(detailItems(owner), focal, 0, new int[]{0});
             if (post == null) return;
         }
-        String id = postId(post);
+        String id = visit.gallery ? galleryPostId(post) : postId(post);
         if (id == null || id.isEmpty()) return;
         if (visit.video) {
             long position = -1, duration = -1;
@@ -172,16 +184,22 @@ public final class MediaHistoryRuntime {
         }
         if (visit.session.sample(account + "/" + id + "/" + media, true, true)) {
             MediaHistoryStore.record(account, id, media, visit.video ? "video" : "post",
-                    getPostAuthorScreenName(post), getPostText(post), 0, previews(post, visit.video ? media : null));
+                    visit.gallery ? galleryAuthor(post) : getPostAuthorScreenName(post),
+                    visit.gallery ? galleryText(post) : getPostText(post), 0,
+                    visit.gallery ? previewItems(galleryMedia(post), null) : previews(post, visit.video ? media : null));
         }
     }
 
     private static String previews(Object post, String selectedMedia) {
-        JSONArray result = new JSONArray();
         // Cold path, once per foreground visit, using the same semantic parser as Piko's media picker.
         // No whole-post toString, credentials, signed video URL or background fetching.
         List<?> items = postMedia(post);
         if (items == null || items.isEmpty()) items = repostedMedia(post);
+        return previewItems(items, selectedMedia);
+    }
+
+    private static String previewItems(List<?> items, String selectedMedia) {
+        JSONArray result = new JSONArray();
         if (items == null) return "[]";
         for (int i = 0; i < Math.min(16, items.size()) && result.length() < 4; i++) {
             Object item = items.get(i);
@@ -220,6 +238,12 @@ public final class MediaHistoryRuntime {
     private static Enum<?> lifecycle(Object owner) { throw unpatched(); }
     private static long videoAccount(Object owner) { throw unpatched(); }
     private static long postAccount(Object owner) { throw unpatched(); }
+    private static long galleryAccount(Object owner) { throw unpatched(); }
+    private static Object galleryPost(Object owner) { throw unpatched(); }
+    private static String galleryPostId(Object post) { throw unpatched(); }
+    private static String galleryText(Object post) { throw unpatched(); }
+    private static String galleryAuthor(Object post) { throw unpatched(); }
+    private static List<?> galleryMedia(Object post) { throw unpatched(); }
     private static List<?> videoItems(Object owner) { throw unpatched(); }
     private static int videoPage(Object owner) { throw unpatched(); }
     private static List<?> detailItems(Object owner) { throw unpatched(); }
