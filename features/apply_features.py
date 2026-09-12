@@ -11,12 +11,17 @@ PACKAGE = f"{JAVA}/mediatools"
 MANIFEST = frozenset({
     f"{PACKAGE}/{name}.java" for name in (
         "WatchSession", "MediaHistoryStore", "DownloadTaskStore", "HistoryFragment", "MediaHistoryRuntime", "DownloadsFragment",
-        "ResumePolicy", "PlaybackStore", "VideoToolsRuntime")
-}) | {"patches/src/main/kotlin/app/crimera/patches/newx/mediatools/MediaHistoryPatch.kt"}
+        "ResumePolicy", "PlaybackStore", "VideoToolsRuntime", "MediaToolsUi", "MediaPreviewLoader", "HeaderToolsRuntime")
+}) | {f"patches/src/main/kotlin/app/crimera/patches/newx/mediatools/{name}.kt" for name in ("MediaHistoryPatch", "MediaHeaderPatch")}
 STORE = "app.morphe.extension.newx.mediatools.MediaHistoryStore"
 RUNTIME = "app.morphe.extension.newx.mediatools.MediaHistoryRuntime"
 EDITS = {
-    f"{JAVA}/misc/InlineDownloadButton.java": DOWNLOAD_EDITS,
+    f"{JAVA}/settings/NewXSettingsActivity.java": [(
+        ".replace(containerId, new NewXSettingsFragment())",
+        ".replace(containerId, app.morphe.extension.newx.mediatools.HeaderToolsRuntime.initialScreen(getIntent()))")],
+    f"{JAVA}/misc/InlineDownloadButton.java": DOWNLOAD_EDITS + [(
+        "    static String thumbnailUrlForMedia(String mediaText) {",
+        "    public static String thumbnailUrlForMedia(String mediaText) {")],
     f"{JAVA}/settings/SettingsRenderer.java": [(
         "            if (item.setting.get() == value) return true;\n            item.setting.save(value);",
         "            if (item.setting.get() == value) return true;\n"

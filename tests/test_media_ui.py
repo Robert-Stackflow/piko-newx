@@ -1,0 +1,65 @@
+import json
+import sqlite3
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1] / "features"
+JAVA = ROOT / "source/extensions/newx/src/main/java/app/morphe/extension/newx/mediatools"
+
+
+class MediaUiTests(unittest.TestCase):
+    def test_titles_and_no_duplicate_history_toggle(self):
+        history = (JAVA / "HistoryFragment.java").read_text(encoding="utf-8")
+        downloads = (JAVA / "DownloadsFragment.java").read_text(encoding="utf-8")
+        self.assertIn('setPageTitle(text("history_title"))', history)
+        self.assertIn('setPageTitle(text("downloads_title"))', downloads)
+        for obsolete in ("SwitchRow", "saveEnabled", "Spinner", "simple_list_item", "new Button("):
+            self.assertNotIn(obsolete, history)
+        self.assertIn("setOnItemClickListener", history)
+        self.assertIn("previews.close()", history)
+        self.assertIn("previews.close()", downloads)
+        self.assertIn("if (scrolling)", downloads)
+        self.assertIn("hasStableIds() { return true; }", downloads)
+        self.assertIn("list.setSelectionFromTop(first, top)", downloads)
+
+    def test_history_schema_upgrade_keeps_existing_records(self):
+        source = (JAVA / "MediaHistoryStore.java").read_text(encoding="utf-8")
+        migration = "ALTER TABLE history ADD COLUMN previews TEXT NOT NULL DEFAULT '[]'"
+        self.assertIn(migration, source)
+        db = sqlite3.connect(":memory:")
+        db.execute("CREATE TABLE history (post TEXT PRIMARY KEY, body TEXT)")
+        db.execute("INSERT INTO history VALUES ('123','kept')")
+        db.execute(migration)
+        self.assertEqual(db.execute("SELECT * FROM history").fetchone(), ("123", "kept", "[]"))
+        db.close()
+
+    def test_previews_are_bounded_and_do_not_log_history_urls(self):
+        source = (JAVA / "MediaPreviewLoader.java").read_text(encoding="utf-8")
+        for contract in ('new ArrayBlockingQueue<>(32)', 'new LruCache<>(8192)',
+                         'setInstanceFollowRedirects(false)', 'if (safeRemote(source).isEmpty() || video)',
+                         'context.getContentResolver().loadThumbnail', 'key.equals(image.getTag())',
+                         'io.shutdownNow()', 'uri.getUserInfo() == null'):
+            self.assertIn(contract, source)
+        self.assertNotIn("NewXLogger", source)
+        self.assertNotIn("Authorization", source)
+
+    def test_header_is_native_and_direct_navigation_is_allowlisted(self):
+        source = (JAVA / "HeaderToolsRuntime.java").read_text(encoding="utf-8")
+        patch = (ROOT / "source/patches/src/main/kotlin/app/crimera/patches/newx/mediatools/MediaHeaderPatch.kt").read_text(encoding="utf-8")
+        self.assertIn('"downloads".equals(destination)', source)
+        self.assertIn('"history".equals(destination)', source)
+        self.assertNotIn("Class.forName", source)
+        self.assertNotIn("getDecorView", source)
+        self.assertIn('"home_logo_scroll_to_top"', patch)
+        self.assertIn('"more_options"', patch)
+        self.assertIn('"AndroidView factory/update renderer"', patch)
+        lock = (JAVA / "VideoToolsRuntime.java").read_text(encoding="utf-8")
+        self.assertIn("if (!locked) return;", lock)
+        self.assertIn("getGlobalVisibleRect(lastHeaderBounds)", lock)
+        self.assertNotIn("new Button(", lock)
+
+    def test_all_media_resource_placeholders_are_preserved(self):
+        import re
+        resources = json.loads((ROOT / "resources.json").read_text(encoding="utf-8"))
+        for name, (english, chinese) in resources.items():
+            self.assertEqual(re.findall(r"%[0-9]+\$[ds]", english), re.findall(r"%[0-9]+\$[ds]", chinese), name)

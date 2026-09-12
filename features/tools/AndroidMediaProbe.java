@@ -14,7 +14,11 @@ public final class AndroidMediaProbe {
             "app.morphe.extension.newx.mediatools.DownloadsFragment",
             "app.morphe.extension.newx.mediatools.ResumePolicy",
             "app.morphe.extension.newx.mediatools.PlaybackStore",
-            "app.morphe.extension.newx.mediatools.VideoToolsRuntime"
+            "app.morphe.extension.newx.mediatools.VideoToolsRuntime",
+            "app.morphe.extension.newx.mediatools.MediaToolsUi",
+            "app.morphe.extension.newx.mediatools.MediaToolsUi$Icon",
+            "app.morphe.extension.newx.mediatools.MediaPreviewLoader"
+            ,"app.morphe.extension.newx.mediatools.HeaderToolsRuntime"
         };
         String[] targets = args.length == 0 ? names : args;
         int failures = 0;
