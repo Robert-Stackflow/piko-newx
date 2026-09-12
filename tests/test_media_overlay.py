@@ -29,6 +29,11 @@ class MediaOverlayTests(unittest.TestCase):
             if file.suffix == ".java":
                 self.assertIn("app.morphe.extension.newx.mediatools." + file.stem, probe)
 
+    def test_native_null_branches_do_not_merge_incompatible_reference_types(self):
+        source = (media.ROOT / "source/patches/src/main/kotlin/app/crimera/patches/newx/mediatools/MediaHistoryPatch.kt").read_text()
+        self.assertNotRegex(source, r":none\s+return-object p0")
+        self.assertIn(":none\n            const/4 p0, 0x0", source)
+
     @unittest.skipUnless(os.getenv("PIKO_TEST_SOURCE"), "Needs pinned source")
     def test_pinned_application(self):
         source = Path(os.environ["PIKO_TEST_SOURCE"])
