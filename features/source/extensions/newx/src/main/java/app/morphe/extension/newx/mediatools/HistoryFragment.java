@@ -44,7 +44,7 @@ public final class HistoryFragment extends NewXCustomScreenFragment {
     private boolean alive;
     private final Runnable refresh = this::load;
 
-    private static String text(String key) { return StringRef.str("piko_tools_" + key); }
+    private static String text(String key) { return StringRef.str("piko_newx_tools_" + key); }
 
     @Override public View onCreateView(LayoutInflater inflater, ViewGroup parent, Bundle state) {
         Context context = getActivity();

@@ -11,9 +11,11 @@ class MediaOverlayTests(unittest.TestCase):
     def test_manifest_and_resource_contract(self):
         self.assertEqual({p.relative_to(media.ROOT / "source").as_posix() for p in media.files()}, media.MANIFEST)
         strings = json.loads((media.ROOT / "resources.json").read_text(encoding="utf-8"))
+        for name in strings:
+            self.assertRegex(name, r"^piko_newx_[a-z0-9_]+$")
         self.assertTrue(all(len(values) == 2 and all(values) for values in strings.values()))
-        self.assertIn("暂停也算", strings["piko_tools_history_enabled_summary"][1])
-        self.assertNotIn("one second", strings["piko_tools_history_enabled_summary"][0])
+        self.assertIn("暂停也算", strings["piko_newx_tools_history_enabled_summary"][1])
+        self.assertNotIn("one second", strings["piko_newx_tools_history_enabled_summary"][0])
 
     def test_source_edit_fail_closed(self):
         self.assertEqual(media.edited("anchor", [("anchor", "new")], "test"), "new")
@@ -41,6 +43,7 @@ class MediaOverlayTests(unittest.TestCase):
                 report = media.apply_features(fixture)
                 self.assertEqual(set(report["feature_files"]), media.MANIFEST)
                 for relative in media.EDITS:
-                    self.assertIn("invalidatePending()", (fixture / relative).read_text())
+                    expected = "retryManagedDownload(" if relative.endswith("InlineDownloadButton.java") else "invalidatePending()"
+                    self.assertTrue(expected in (fixture / relative).read_text(), relative)
                 with self.assertRaisesRegex(ValueError, "overwrite"):
                     media.apply_features(fixture)
