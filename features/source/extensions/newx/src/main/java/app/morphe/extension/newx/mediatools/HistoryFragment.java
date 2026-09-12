@@ -82,11 +82,10 @@ public final class HistoryFragment extends NewXCustomScreenFragment {
             });
         }
         options.addView(filters, new LinearLayout.LayoutParams(0, -2, 1));
-        Icon clear = new Icon(c, "delete", text("history_clear"));
-        LinearLayout.LayoutParams clearParams = space(c, 48, 48, 0); clearParams.setMarginStart(dp(c, 8));
-        options.addView(clear, clearParams); clear.setOnClickListener(v -> confirmClear());
         controls.addView(options); root.addView(controls);
-        status = status(c); root.addView(status);
+        status = label(c, "", 14, true); status.setGravity(Gravity.CENTER);
+        status.setPadding(dp(c, 32), dp(c, 24), dp(c, 32), dp(c, 24));
+        root.addView(status, new LinearLayout.LayoutParams(-1, 0, 1));
         list = new ListView(c); list.setDivider(null); list.setSelector(android.R.color.transparent);
         list.setClipToPadding(false); list.setPadding(0, 0, 0, dp(c, 12));
         adapter = new BaseAdapter() {
@@ -99,7 +98,7 @@ public final class HistoryFragment extends NewXCustomScreenFragment {
                 row.bind(entries.get(p)); return row.outer;
             }
         };
-        list.setAdapter(adapter); root.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
+        list.setAdapter(adapter); list.setEmptyView(status); root.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
         list.setOnItemClickListener((p, view, index, id) -> {
             if (index >= entries.size()) return;
             try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://x.com/i/status/" + entries.get(index).post()))
@@ -194,16 +193,21 @@ public final class HistoryFragment extends NewXCustomScreenFragment {
             int first = list.getFirstVisiblePosition(); View child = list.getChildAt(0); int top = child == null ? 0 : child.getTop();
             entries.clear(); entries.addAll(result.entries()); adapter.notifyDataSetChanged();
             if (resetPosition) list.setSelection(0); else list.setSelectionFromTop(first, top);
-            status.setText(result.failed() ? text("operation_failed") : entries.isEmpty() ? text("history_empty")
-                    : String.format(text("history_count"), entries.size()));
+            status.setText(result.failed() ? text("operation_failed") : text("history_empty"));
         }));
     }
     @Override public void onResume() {
         super.onResume();
         if (getActivity() instanceof NewXSettingsActivity host) {
             host.setPageTitle(text("history_title")); host.setPatchVersionFooterVisible(false);
+            Icon clear = new Icon(host, "delete", text("history_clear"));
+            clear.setOnClickListener(view -> confirmClear()); host.setPageAction(clear);
         }
         load(false);
+    }
+    @Override public void onPause() {
+        if (getActivity() instanceof NewXSettingsActivity host) host.setPageAction(null);
+        super.onPause();
     }
     @Override public void onSaveInstanceState(Bundle state) {
         super.onSaveInstanceState(state); state.putInt("filter", selected);

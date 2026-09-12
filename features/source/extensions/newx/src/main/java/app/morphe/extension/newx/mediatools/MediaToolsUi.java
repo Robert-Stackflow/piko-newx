@@ -65,13 +65,15 @@ public final class MediaToolsUi {
     public static LinearLayout card(Context c) {
         LinearLayout card = column(c);
         card.setPadding(dp(c, 16), dp(c, 14), dp(c, 16), dp(c, 14));
-        ripple(card, Theme.blend(Theme.surfaceContainer(c), Theme.primaryText(c), .045f), 18);
+        ripple(card, Theme.surfaceContainer(c), 0);
         return card;
     }
     public static FrameLayout wrapCard(Context c, View card) {
         FrameLayout outer = new FrameLayout(c);
-        outer.setPadding(dp(c, 16), dp(c, 4), dp(c, 16), dp(c, 8));
-        outer.addView(card, new FrameLayout.LayoutParams(-1, -2)); return outer;
+        outer.addView(card, new FrameLayout.LayoutParams(-1, -2));
+        View divider = new View(c); divider.setBackgroundColor(Theme.dividerColor(c));
+        outer.addView(divider, new FrameLayout.LayoutParams(-1, Math.max(1, dp(c, .5f)), Gravity.BOTTOM));
+        return outer;
     }
     public static void oneLine(TextView view) {
         view.setSingleLine(); view.setEllipsize(TextUtils.TruncateAt.END);

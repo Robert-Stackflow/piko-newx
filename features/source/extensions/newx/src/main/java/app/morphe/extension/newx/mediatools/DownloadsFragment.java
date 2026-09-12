@@ -53,13 +53,9 @@ public final class DownloadsFragment extends NewXCustomScreenFragment {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(NewXSettingsUi.backgroundColor(context));
         previews = new MediaPreviewLoader();
-        LinearLayout toolbar = row(context);
-        toolbar.setPadding(0, dp(context, 8), dp(context, 16), 0);
-        status = status(context);
-        toolbar.addView(status, new LinearLayout.LayoutParams(0, -2, 1));
-        Icon clear = new Icon(context, "delete", text("download_clear"));
-        toolbar.addView(clear, space(context, 48, 48, 0));
-        root.addView(toolbar);
+        status = label(context, "", 14, true); status.setGravity(android.view.Gravity.CENTER);
+        status.setPadding(dp(context, 32), dp(context, 24), dp(context, 32), dp(context, 24));
+        root.addView(status, new LinearLayout.LayoutParams(-1, 0, 1));
         list = new ListView(context);
         list.setDivider(null); list.setSelector(android.R.color.transparent);
         list.setClipToPadding(false); list.setPadding(0, 0, 0, dp(context, 12));
@@ -78,11 +74,16 @@ public final class DownloadsFragment extends NewXCustomScreenFragment {
             }
         };
         list.setAdapter(adapter);
+        list.setEmptyView(status);
         root.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
         list.setOnItemClickListener((p, view, index, id) -> {
             if (index < tasks.size()) showTask(tasks.get(index));
         });
-        clear.setOnClickListener(view -> new AlertDialog.Builder(context)
+        return root;
+    }
+
+    private void confirmClear() {
+        new AlertDialog.Builder(getActivity())
                 .setTitle(text("download_clear"))
                 .setMessage(text("download_clear_confirm"))
                 .setNegativeButton(android.R.string.cancel, null)
@@ -91,8 +92,7 @@ public final class DownloadsFragment extends NewXCustomScreenFragment {
                             if (!resumed) return;
                             if (!success) Utils.showToastShort(text("operation_failed"));
                             load();
-                        }))).show());
-        return root;
+                        }))).show();
     }
 
     private void load() {
@@ -113,8 +113,7 @@ public final class DownloadsFragment extends NewXCustomScreenFragment {
                 for (int i = 0; i < tasks.size(); i++) if (tasks.get(i).id() == anchor) { first = i; break; }
                 list.setSelectionFromTop(first, top);
             }
-            status.setText(result.failed() ? text("operation_failed") : tasks.isEmpty()
-                    ? text("download_empty") : String.format(text("download_count"), tasks.size()));
+            status.setText(result.failed() ? text("operation_failed") : text("download_empty"));
             main.postDelayed(refresh, 1500);
         }));
     }
@@ -220,10 +219,13 @@ public final class DownloadsFragment extends NewXCustomScreenFragment {
         super.onResume(); resumed = true;
         if (getActivity() instanceof NewXSettingsActivity host) {
             host.setPageTitle(text("downloads_title")); host.setPatchVersionFooterVisible(false);
+            Icon clear = new Icon(host, "delete", text("download_clear"));
+            clear.setOnClickListener(view -> confirmClear()); host.setPageAction(clear);
         }
         load();
     }
     @Override public void onPause() {
+        if (getActivity() instanceof NewXSettingsActivity host) host.setPageAction(null);
         resumed = false; loading = false; generation++; main.removeCallbacks(refresh); super.onPause();
     }
     @Override public void onDestroyView() {
