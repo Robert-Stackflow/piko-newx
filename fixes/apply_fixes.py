@@ -11,6 +11,11 @@ STRINGS = {
         "Keep your place when refreshing Lists and save each List separately. Restart after changing this setting.",
         "刷新列表时保持阅读位置，并分别记住每个列表的位置。更改后请重启应用。"],
 }
+for suffix, english, chinese in (("for_you", "For You", "为你推荐"), ("following", "Following", "正在关注"), ("lists", "Lists", "列表")):
+    STRINGS[f"piko_newx_show_reposts_{suffix}_title"] = [f"Show reposts in {english}", f"{chinese}：展示转推"]
+    STRINGS[f"piko_newx_show_reposts_{suffix}_summary"] = [
+        f"Show reposted posts in {english}. Quote posts are unaffected. Restart after changing.",
+        f"在{chinese}中展示转推的帖子。不影响引用帖。更改后请重启应用。"]
 
 
 def apply_fixes(source, check_only=False):
@@ -27,8 +32,8 @@ def apply_fixes(source, check_only=False):
         if not target.resolve().is_relative_to(source) or target.exists():
             raise ValueError(f"Fix would overwrite existing source: {relative}")
         planned.append((target, path.read_bytes()))
-    if len(planned) != 2:
-        raise ValueError("Expected exactly the List patch and its extension")
+    if len(planned) != 4:
+        raise ValueError("Expected exactly two patch files and two extensions")
     resources = []
     for locale, index in (("values", 0), ("values-zh-rCN", 1)):
         path = source / "patches/src/main/resources/addresources" / locale / "newx/strings.xml"

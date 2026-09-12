@@ -14,8 +14,8 @@ class ListFixTests(unittest.TestCase):
     @unittest.skipUnless(os.getenv("PIKO_TEST_SOURCE"), "Needs pinned upstream checkout")
     def test_overlay_targets_are_additive_and_pinned(self):
         report = apply_fixes(Path(os.environ["PIKO_TEST_SOURCE"]), check_only=True)
-        self.assertEqual(len(report["fix_files"]), 2)
-        self.assertEqual(report["fix_resources"], 2)
+        self.assertEqual(len(report["fix_files"]), 4)
+        self.assertEqual(report["fix_resources"], 8)
 
     @unittest.skipUnless(shutil.which("javac") and shutil.which("java"), "Needs Java")
     def test_real_java_policy_and_per_list_persistence(self):
@@ -91,11 +91,66 @@ public class ListFixTest {
     System.out.println("List policy/persistence checks passed: " + checks);
   }
 }''',
+            "RepostTest.java": '''import java.util.*;
+import app.morphe.extension.newx.timeline.TimelineRepostFilter;
+import app.morphe.extension.newx.settings.SettingsRegistry;
+public class RepostTest {
+  enum T { FOR_YOU,FOLLOWING,RANKED_FOLLOWING,LIST_POSTS,LIST_MEMBERS,USER_PROFILE_POSTS,SEARCH_LATEST,BOOKMARKS }
+  record Post(String id,boolean repost) {}
+  record Wrap(Object item) {}
+  record Module(List<?> children,Set<Object> removed) {}
+  static int checks;
+  static void check(boolean ok) { checks++; if (!ok) throw new AssertionError("repost check " + checks); }
+  static final TimelineRepostFilter.Model model = new TimelineRepostFilter.Model() {
+    public boolean repost(Object i) { return i instanceof Post p && p.repost(); }
+    public boolean wrapper(Object i) { return i instanceof Wrap; }
+    public Object unwrap(Object i) { return ((Wrap)i).item(); }
+    public Object rewrap(Object old,Object i) { return new Wrap(i); }
+    public List<?> children(Object i) { return i instanceof Module m ? m.children() : null; }
+    public Object replaceChildren(Object old,List<?> c,Set<Object> ids) { return new Module(c,ids); }
+    public Object postId(Object i) { return i instanceof Post p ? p.id() : null; }
+    public Object immutable(List<Object> i) { return Collections.unmodifiableList(i); }
+  };
+  public static void main(String[] args) {
+    Object ordinary = new Post("ordinary",false), quote = new Post("quote",false), rp = new Post("reposted",true);
+    Object cursor = new Object();
+    List<?> input = List.of(ordinary,rp,quote,cursor);
+    for (T t:T.values()) {
+      check(TimelineRepostFilter.showReposts(t));
+      check(TimelineRepostFilter.filter(input,t,model)==input);
+    }
+    for (String suffix:List.of("for_you","following","lists")) {
+      SettingsRegistry.values.clear();
+      SettingsRegistry.values.put("newx.timeline.show_reposts_"+suffix,false);
+      for (T t:T.values()) {
+        boolean hide = suffix.equals("for_you") && t==T.FOR_YOU || suffix.equals("following") && (t==T.FOLLOWING || t==T.RANKED_FOLLOWING) || suffix.equals("lists") && t==T.LIST_POSTS;
+        Object result = TimelineRepostFilter.filter(input,t,model);
+        check(TimelineRepostFilter.showReposts(t)==!hide);
+        check(hide ? result.equals(List.of(ordinary,quote,cursor)) : result==input);
+      }
+    }
+    Object wrapped = new Wrap(rp);
+    Object module = new Module(List.of(new Wrap(ordinary),wrapped),Set.of());
+    List<?> result = (List<?>)TimelineRepostFilter.filter(List.of(module),T.LIST_POSTS,model);
+    Module changed = (Module)result.get(0);
+    check(changed.children().equals(List.of(new Wrap(ordinary))));
+    check(changed.removed().equals(Set.of("reposted")));
+    check(((List<?>)TimelineRepostFilter.filter(List.of(new Module(List.of(wrapped),Set.of())),T.LIST_POSTS,model)).isEmpty());
+    check(((List<?>)TimelineRepostFilter.filter(List.of(wrapped),T.LIST_POSTS,model)).isEmpty());
+    check(TimelineRepostFilter.filter(List.of(ordinary),T.LIST_POSTS,model).equals(List.of(ordinary)));
+    check(TimelineRepostFilter.filter(null,T.LIST_POSTS,model)==null);
+    check(TimelineRepostFilter.filter(input,null,model)==input);
+    check(input.size()==4);
+    SettingsRegistry.values.put("newx.timeline.show_reposts_lists",true);
+    check(TimelineRepostFilter.filter(input,T.LIST_POSTS,model)==input);
+    System.out.println("Repost visibility and display filtering checks passed: " + checks);
+  }
+}''',
         }
         helper = ROOT / "fixes/source/extensions/newx/src/main/java/app/morphe/extension/newx/timeline/ListReadingPosition.java"
         with tempfile.TemporaryDirectory(prefix="piko-list-tests-") as folder:
             directory = Path(folder)
-            inputs = [str(helper)]
+            inputs = [str(helper), str(helper.with_name("TimelineRepostFilter.java"))]
             for name, text in fixtures.items():
                 path = directory / name
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -103,3 +158,4 @@ public class ListFixTest {
                 inputs.append(str(path))
             subprocess.run(["javac", "-encoding", "UTF-8", "-d", str(directory), *inputs], check=True)
             subprocess.run(["java", "-cp", str(directory), "ListFixTest"], check=True)
+            subprocess.run(["java", "-cp", str(directory), "RepostTest"], check=True)
