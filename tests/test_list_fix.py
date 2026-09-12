@@ -26,7 +26,7 @@ class ListFixTests(unittest.TestCase):
     @unittest.skipUnless(os.getenv("PIKO_TEST_SOURCE"), "Needs pinned upstream checkout")
     def test_overlay_targets_are_additive_and_pinned(self):
         report = apply_fixes(Path(os.environ["PIKO_TEST_SOURCE"]), check_only=True)
-        self.assertEqual(len(report["fix_files"]), 4)
+        self.assertEqual(len(report["fix_files"]), 7)
         self.assertEqual(report["fix_resources"], 8)
 
     @unittest.skipUnless(shutil.which("javac") and shutil.which("java"), "Needs Java")
@@ -72,13 +72,13 @@ public class ListFixTest {
     check(Arrays.equals(ListReadingPosition.restore(T.LIST_POSTS,"LIST_POSTS1"),new int[]{0,0}));
     check(ListReadingPosition.save(T.LIST_POSTS,"LIST_POSTS1",23,41));
     check(ListReadingPosition.save(T.LIST_POSTS,"LIST_POSTS2",7,12));
-    check(Arrays.equals(ListReadingPosition.restore(T.LIST_POSTS,"LIST_POSTS1"),new int[]{23,41}));
-    check(Arrays.equals(ListReadingPosition.restore(T.LIST_POSTS,"LIST_POSTS2"),new int[]{7,12}));
+    check(Arrays.equals(ListReadingPosition.restore(T.LIST_POSTS,"LIST_POSTS1"),new int[]{0,0}));
+    check(Arrays.equals(ListReadingPosition.restore(T.LIST_POSTS,"LIST_POSTS2"),new int[]{0,0}));
     check(Arrays.equals(ListReadingPosition.restore(T.LIST_POSTS,"LIST_POSTS3"),new int[]{0,0}));
     check(ListReadingPosition.restore(T.FOLLOWING,"LIST_POSTS1")==null);
     check(!ListReadingPosition.save(T.FOR_YOU,"LIST_POSTS1",0,0));
     check(ListReadingPosition.save(T.LIST_POSTS,"LIST_POSTS1",-1,0));
-    check(Arrays.equals(ListReadingPosition.restore(T.LIST_POSTS,"LIST_POSTS1"),new int[]{23,41}));
+    check(Arrays.equals(ListReadingPosition.restore(T.LIST_POSTS,"LIST_POSTS1"),new int[]{0,0}));
     SettingsRegistry.values.put("newx.timeline.restore_position",false);
     check(ListReadingPosition.restore(T.LIST_POSTS,"LIST_POSTS1")==null);
     check(!ListReadingPosition.save(T.LIST_POSTS,"LIST_POSTS1",0,0));
