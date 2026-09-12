@@ -51,10 +51,23 @@ an int-array-typed null path with a holder path at one return, which ART inferre
 `listfix.2` uses a separate explicit null return before constructing the holder. The previous
 stable APK was restored immediately without clearing data. Do not install `listfix.1`.
 
-This is an experimental patch, not a verified runtime fix. No Android device was connected during
-development. Persistent restoration stores index/offset, not a tweet ID; it cannot guarantee the same
+The corrected `listfix.2` APK was installed on the connected Android 16 phone with the existing
+signature and without clearing data. The isolated ART probe passed all nine target classes (and
+rejected the known-bad `listfix.1` negative control). Startup and populated home content were observed;
+both pinned List labels were present as text-only. No new APP CRASH exit was recorded after the
+corrected installation. The device was then being operated by the user, so controlled refresh,
+multi-list switching, error recovery and repost-toggle UI tests are not claimed as completed.
+
+This remains an experimental reading-position fix. Persistent restoration stores index/offset,
+not a tweet ID; it cannot guarantee the same
 post after cache eviction, deletions, a large content replacement or process death with changed data.
 List IDs are separate; the same shared List uses the same position across accounts on the device.
+
+Build source: `2e53156`, Actions run `34685290581`. Final APK SHA-256:
+`1c5f958c3f540ffca4211e1abb702b5ee904da660cd0f806decb134777fb49bb`.
+36 applied patches, 364 verified Simplified Chinese strings, original signer and 16 KiB alignment.
+87 final-DEX assertions passed. Local helper tests cover 170 position-policy/persistence checks and
+73 repost filtering checks. `tests/test_list_fix.py` additionally locks the separate typed-null return.
 
 Before promoting: test two pinned Lists with different positions, pull refresh with new posts, no new
 posts, network errors, tab switches, background/foreground and process restart; first entry into empty
