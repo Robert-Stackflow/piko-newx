@@ -109,14 +109,16 @@ val preserveListReadingPositionPatch = bytecodePatch(
             iget-object v0, v0, $identityField
             invoke-static {v1, v0}, $LIST_FIX->restore(${LF_ENUM}${LF_STRING})[I
             move-result-object v0
-            if-eqz v0, :done
+            if-nez v0, :restore
+            const/4 v0, 0x0
+            return-object v0
+            :restore
             const/4 v1, 0x0
             aget v1, v0, v1
             const/4 v2, 0x1
             aget v2, v0, v2
             new-instance v0, $holder
             invoke-direct {v0, v1, v2}, $holder-><init>(II)V
-            :done
             return-object v0
         """)
         val saveBridge = listBridge(component.type, "pikoSaveListPosition", listOf(holder), "Z", 8, """

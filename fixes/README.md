@@ -46,6 +46,11 @@ Register layouts are asserted. There is no runtime reflection of obfuscated clas
 
 ## Limits and device acceptance checklist
 
+The first `listfix.1` candidate was rejected by Android 16 at startup: the position bridge joined
+an int-array-typed null path with a holder path at one return, which ART inferred as Object.
+`listfix.2` uses a separate explicit null return before constructing the holder. The previous
+stable APK was restored immediately without clearing data. Do not install `listfix.1`.
+
 This is an experimental patch, not a verified runtime fix. No Android device was connected during
 development. Persistent restoration stores index/offset, not a tweet ID; it cannot guarantee the same
 post after cache eviction, deletions, a large content replacement or process death with changed data.
