@@ -200,7 +200,9 @@ public final class HistoryFragment extends NewXCustomScreenFragment {
     }
     @Override public void onResume() {
         super.onResume();
-        if (getActivity() instanceof NewXSettingsActivity host) host.setPageTitle(text("history_title"));
+        if (getActivity() instanceof NewXSettingsActivity host) {
+            host.setPageTitle(text("history_title")); host.setPatchVersionFooterVisible(false);
+        }
         load(false);
     }
     @Override public void onSaveInstanceState(Bundle state) {

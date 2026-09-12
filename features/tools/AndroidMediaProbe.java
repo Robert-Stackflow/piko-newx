@@ -18,7 +18,13 @@ public final class AndroidMediaProbe {
             "app.morphe.extension.newx.mediatools.MediaToolsUi",
             "app.morphe.extension.newx.mediatools.MediaToolsUi$Icon",
             "app.morphe.extension.newx.mediatools.MediaPreviewLoader"
-            ,"app.morphe.extension.newx.mediatools.HeaderToolsRuntime"
+            ,"app.morphe.extension.newx.mediatools.HeaderToolsRuntime",
+            "app.morphe.extension.newx.mediatools.HeaderToolsRuntime$HomeFactory",
+            "app.morphe.extension.newx.mediatools.HeaderToolsRuntime$VideoFactory",
+            "app.morphe.extension.newx.mediatools.HeaderToolsRuntime$HeaderUpdate",
+            "app.morphe.extension.newx.mediatools.HeaderToolsRuntime$VideoActions",
+            "app.morphe.extension.newx.mediatools.HistoryFragment$HistoryRow",
+            "app.morphe.extension.newx.mediatools.DownloadsFragment$TaskRow"
         };
         String[] targets = args.length == 0 ? names : args;
         int failures = 0;
@@ -34,6 +40,19 @@ public final class AndroidMediaProbe {
             }
         }
         if (failures > 0) { System.out.println("ART_MEDIA_FAIL " + failures); System.exit(1); }
+        if (args.length == 0) {
+            String header = "app.morphe.extension.newx.mediatools.HeaderToolsRuntime";
+            for (String suffix : new String[]{"HomeFactory", "VideoFactory", "HeaderUpdate", "VideoActions"}) {
+                Class<?> callback = Class.forName(header + "$" + suffix);
+                Class<?>[] parameters = suffix.equals("VideoActions")
+                        ? new Class<?>[]{Object.class, Object.class, Object.class} : new Class<?>[]{Object.class};
+                java.lang.reflect.Method invoke = callback.getDeclaredMethod("invoke", parameters);
+                if (java.lang.reflect.Modifier.isAbstract(invoke.getModifiers())) throw new AssertionError("Abstract callback: " + suffix);
+            }
+            Object updater = Class.forName(header).getMethod("updater").invoke(null);
+            updater.getClass().getMethod("invoke", Object.class).invoke(updater, new Object[]{null});
+            System.out.println("ART_HEADER_CALLBACK_PASS 4; update invoked");
+        }
         System.out.println("ART_MEDIA_PASS " + targets.length);
     }
 }

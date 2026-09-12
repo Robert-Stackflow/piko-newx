@@ -12,6 +12,7 @@ import app.morphe.patches.all.misc.resources.ResourceType
 import app.morphe.patches.all.misc.resources.getResourceId
 import app.morphe.util.getReference
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.builder.MethodImplementationBuilder
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
@@ -32,6 +33,13 @@ private fun MethodReference.parameters() = parameterTypes.map(CharSequence::toSt
 internal val mediaHeaderPatch = bytecodePatch(default = false) {
     dependsOn(newXSettingsPatch)
     execute {
+        for ((name, arity) in listOf("HomeFactory" to 1, "VideoFactory" to 1, "HeaderUpdate" to 1, "VideoActions" to 3)) {
+            val callback = mutableClassDefBy(HEADER.dropLast(1) + "$" + name + ";")
+            callback.methods.filter { it.name == "invoke" && it.returnType == "Ljava/lang/Object;" &&
+                it.parameterTypes.map(CharSequence::toString) == List(arity) { "Ljava/lang/Object;" } &&
+                !AccessFlags.ABSTRACT.isSet(it.accessFlags) && it.implementation != null
+            }.exact("retained callable $name.invoke")
+        }
         val home = Fingerprint(definingClass = "Lcom/x/home/tabbed/", returnType = "V",
             filters = listOf(literal(getResourceId(ResourceType.STRING, "home_logo_scroll_to_top"))))
             .scopedMatchAll().map { it.method }.exact("home logo/header renderer")

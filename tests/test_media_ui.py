@@ -63,3 +63,13 @@ class MediaUiTests(unittest.TestCase):
         resources = json.loads((ROOT / "resources.json").read_text(encoding="utf-8"))
         for name, (english, chinese) in resources.items():
             self.assertEqual(re.findall(r"%[0-9]+\$[ds]", english), re.findall(r"%[0-9]+\$[ds]", chinese), name)
+
+    def test_kotlin_callbacks_survive_shrinking_as_named_classes(self):
+        source = (JAVA / "HeaderToolsRuntime.java").read_text(encoding="utf-8")
+        for name in ("HomeFactory", "VideoFactory", "HeaderUpdate", "VideoActions"):
+            self.assertIn("class " + name + " implements Function", source)
+        self.assertNotIn("= context ->", source)
+        self.assertNotIn("return (scope, composer, flags) ->", source)
+        probe = (ROOT / "tools/AndroidMediaProbe.java").read_text()
+        self.assertIn('getDeclaredMethod("invoke", parameters)', probe)
+        self.assertIn('ART_HEADER_CALLBACK_PASS', probe)

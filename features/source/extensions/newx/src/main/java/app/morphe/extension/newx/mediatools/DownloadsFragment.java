@@ -218,7 +218,9 @@ public final class DownloadsFragment extends NewXCustomScreenFragment {
 
     @Override public void onResume() {
         super.onResume(); resumed = true;
-        if (getActivity() instanceof NewXSettingsActivity host) host.setPageTitle(text("downloads_title"));
+        if (getActivity() instanceof NewXSettingsActivity host) {
+            host.setPageTitle(text("downloads_title")); host.setPatchVersionFooterVisible(false);
+        }
         load();
     }
     @Override public void onPause() {
