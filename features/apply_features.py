@@ -3,17 +3,19 @@ import json
 import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from features.download_edits import EDITS as DOWNLOAD_EDITS
 
 ROOT = Path(__file__).resolve().parent
 JAVA = "extensions/newx/src/main/java/app/morphe/extension/newx"
 PACKAGE = f"{JAVA}/mediatools"
 MANIFEST = frozenset({
     f"{PACKAGE}/{name}.java" for name in (
-        "WatchSession", "MediaHistoryStore", "DownloadTaskStore", "HistoryFragment", "MediaHistoryRuntime")
+        "WatchSession", "MediaHistoryStore", "DownloadTaskStore", "HistoryFragment", "MediaHistoryRuntime", "DownloadsFragment")
 }) | {"patches/src/main/kotlin/app/crimera/patches/newx/mediatools/MediaHistoryPatch.kt"}
 STORE = "app.morphe.extension.newx.mediatools.MediaHistoryStore"
 RUNTIME = "app.morphe.extension.newx.mediatools.MediaHistoryRuntime"
 EDITS = {
+    f"{JAVA}/misc/InlineDownloadButton.java": DOWNLOAD_EDITS,
     f"{JAVA}/settings/SettingsRenderer.java": [(
         "            if (item.setting.get() == value) return true;\n            item.setting.save(value);",
         "            if (item.setting.get() == value) return true;\n"

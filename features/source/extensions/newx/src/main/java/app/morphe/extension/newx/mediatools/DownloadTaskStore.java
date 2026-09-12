@@ -20,6 +20,7 @@ public final class DownloadTaskStore {
     public record Task(long id, String url, String file, String mime, String post,
                        String author, String state, String reason, String uri,
                        long bytes, long total, long updated) {}
+    public record Result(List<Task> tasks, boolean failed) {}
 
     private DownloadTaskStore() {}
 
@@ -82,6 +83,8 @@ public final class DownloadTaskStore {
         update(context, id, "failed", reason, null);
     }
 
+    public static void retried(Context context, long id) { update(context, id, "retried", "", null); }
+
     private static void update(Context context, long id, String state, String reason, String uri) {
         Context app = context.getApplicationContext();
         IO.execute(() -> {
@@ -95,9 +98,10 @@ public final class DownloadTaskStore {
         });
     }
 
-    public static void query(Consumer<List<Task>> done) {
+    public static void query(Consumer<Result> done) {
         IO.execute(() -> {
             List<Task> tasks = new ArrayList<>();
+            boolean failed = false;
             Context context = Utils.getContext();
             try {
                 SQLiteDatabase db = database(context);
@@ -108,7 +112,7 @@ public final class DownloadTaskStore {
                         String state = value(c, "state");
                         String reason = value(c, "reason");
                         long bytes = 0, total = -1;
-                        if (id > 0 && !state.equals("complete") && !state.equals("failed") && manager != null) {
+                        if (id > 0 && !state.equals("complete") && !state.equals("failed") && !state.equals("retried") && manager != null) {
                             try (Cursor download = manager.query(new DownloadManager.Query().setFilterById(id))) {
                                 if (download != null && download.moveToFirst()) {
                                     int status = download.getInt(download.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
@@ -134,16 +138,17 @@ public final class DownloadTaskStore {
                                 bytes, total, c.getLong(c.getColumnIndexOrThrow("updated"))));
                     }
                 }
-            } catch (RuntimeException ignored) {}
-            done.accept(tasks);
+            } catch (RuntimeException ignored) { failed = true; }
+            done.accept(new Result(tasks, failed));
         });
     }
 
-    public static void clearCompleted(Runnable done) {
+    public static void clearCompleted(Consumer<Boolean> done) {
         IO.execute(() -> {
+            boolean success = true;
             try { database(Utils.getContext()).delete("tasks", "state='complete'", null); }
-            catch (RuntimeException ignored) {}
-            if (done != null) done.run();
+            catch (RuntimeException ignored) { success = false; }
+            if (done != null) done.accept(success);
         });
     }
 

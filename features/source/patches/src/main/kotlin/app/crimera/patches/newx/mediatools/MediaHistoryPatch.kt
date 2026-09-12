@@ -38,13 +38,15 @@ val mediaHistoryPatch = bytecodePatch(
     dependsOn(newXTimelineTextModelAdapterPatch, newXPostMediaModelResolutionPatch)
     newXSettings {
         category(Categories.POST_ACTIONS_MEDIA) {
-            customScreen(id = "newx.media_tools.history", strings = settingStrings("piko_tools_history"), order = 510,
+            customScreen(id = "newx.media_tools.downloads", strings = settingStrings("piko_newx_tools_downloads"), order = 509,
+                fragmentClassDescriptor = "Lapp/morphe/extension/newx/mediatools/DownloadsFragment;")
+            customScreen(id = "newx.media_tools.history", strings = settingStrings("piko_newx_tools_history"), order = 510,
                 fragmentClassDescriptor = "Lapp/morphe/extension/newx/mediatools/HistoryFragment;")
-            toggle(id = "newx.media_tools.history_enabled", strings = settingStrings("piko_tools_history_enabled"),
+            toggle(id = "newx.media_tools.history_enabled", strings = settingStrings("piko_newx_tools_history_enabled"),
                 order = 511, defaultValue = false)
-            singleChoice(id = "newx.media_tools.history_days", strings = settingStrings("piko_tools_history_days"),
-                order = 512, defaultValue = "30", options = listOf(choice("7", "piko_tools_days_7"),
-                    choice("30", "piko_tools_days_30"), choice("90", "piko_tools_days_90")))
+            singleChoice(id = "newx.media_tools.history_days", strings = settingStrings("piko_newx_tools_history_days"),
+                order = 512, defaultValue = "30", options = listOf(choice("7", "piko_newx_tools_days_7"),
+                    choice("30", "piko_newx_tools_days_30"), choice("90", "piko_newx_tools_days_90")))
         }
     }
     execute {
