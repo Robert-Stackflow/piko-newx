@@ -53,22 +53,22 @@ EDITS = [
 
     public static void retryManagedDownload(Context context, long id, String url, String fileName,
             String mime, String post, String author, java.util.function.Consumer<Boolean> done) {
-        Context app = context.getApplicationContext();
+        Context downloadContext = context.getApplicationContext();
         DOWNLOAD_EXECUTOR.execute(() -> {
             boolean success = false;
             try {
-                DownloadManager manager = downloadManager(app);
+                DownloadManager manager = downloadManager(downloadContext);
                 if (manager == null) return;
-                if (pendingDownload(app, id) != null) {
+                if (pendingDownload(downloadContext, id) != null) {
                     // A publication failure retries publication, not the network transfer.
-                    finishPendingDownload(app, manager, id);
-                    success = pendingDownload(app, id) == null;
+                    finishPendingDownload(downloadContext, manager, id);
+                    success = pendingDownload(downloadContext, id) == null;
                 } else if (NewXUtils.isHttpUrl(url)) {
-                    String target = resolveTargetFileName(app, fileName, conflictBehavior(), mime);
+                    String target = resolveTargetFileName(downloadContext, fileName, conflictBehavior(), mime);
                     if (target != null) {
-                        success = queueDownload(app, manager, url, target, mime, post, author,
+                        success = queueDownload(downloadContext, manager, url, target, mime, post, author,
                                 str("piko_newx_l10n_downloading")) == EnqueueState.QUEUED;
-                        if (success) STORE_PLACEHOLDER.retried(app, id);
+                        if (success) STORE_PLACEHOLDER.retried(downloadContext, id);
                     }
                 }
             } catch (RuntimeException ignored) {

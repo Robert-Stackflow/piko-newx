@@ -10,7 +10,8 @@ JAVA = "extensions/newx/src/main/java/app/morphe/extension/newx"
 PACKAGE = f"{JAVA}/mediatools"
 MANIFEST = frozenset({
     f"{PACKAGE}/{name}.java" for name in (
-        "WatchSession", "MediaHistoryStore", "DownloadTaskStore", "HistoryFragment", "MediaHistoryRuntime", "DownloadsFragment")
+        "WatchSession", "MediaHistoryStore", "DownloadTaskStore", "HistoryFragment", "MediaHistoryRuntime", "DownloadsFragment",
+        "ResumePolicy", "PlaybackStore", "VideoToolsRuntime")
 }) | {"patches/src/main/kotlin/app/crimera/patches/newx/mediatools/MediaHistoryPatch.kt"}
 STORE = "app.morphe.extension.newx.mediatools.MediaHistoryStore"
 RUNTIME = "app.morphe.extension.newx.mediatools.MediaHistoryRuntime"
@@ -21,7 +22,7 @@ EDITS = {
         "            if (item.setting.get() == value) return true;\n"
         f"            if (item.id.equals({STORE}.ENABLED)) {STORE}.invalidatePending();\n"
         "            item.setting.save(value);\n"
-        f"            if (item.id.equals({STORE}.ENABLED)) {RUNTIME}.resetVisits();")],
+        f'            if (item.id.startsWith("newx.media_tools.")) {RUNTIME}.resetVisits();')],
     f"{JAVA}/settings/SettingsBackupRestore.java": [(
         "            Setting.importFromJSON(activity, json);",
         f"            {STORE}.invalidatePending();\n"

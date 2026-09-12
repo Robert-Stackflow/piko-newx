@@ -41,5 +41,11 @@
   "piko_newx_tools_reason_enqueue": ["Could not submit the download to Android.", "无法向系统提交下载任务。"],
   "piko_newx_tools_reason_finalize": ["File saving failed. Retry saves the existing download without fetching it again.", "文件保存失败；重试会重新保存已有下载，不重复传输。"],
   "piko_newx_tools_reason_missing": ["The system download record is no longer available.", "系统下载记录已不存在。"],
-  "piko_newx_tools_reason_system": ["Android download reason code:", "系统下载原因代码："]
+  "piko_newx_tools_reason_system": ["Android download reason code:", "系统下载原因代码："],
+  "piko_newx_tools_resume_video_title": ["Remember video position", "记住视频播放进度"],
+  "piko_newx_tools_resume_video_summary": ["Resume the same video on this device. Manual seeking takes priority; near-finished videos start normally. Native speed memory and long-press acceleration are unchanged.", "在本机续播同一视频。手动拖动优先；接近播完的视频正常重新开始。原生倍速记忆和长按加速保持不变。"],
+  "piko_newx_tools_touch_lock_title": ["Show video touch lock", "显示视频防误触按钮"],
+  "piko_newx_tools_touch_lock_summary": ["Lock touch controls in the foreground video viewer. Unlock remains visible; system Back can still exit.", "锁定前台视频页的触摸操作。解锁按钮始终可见，系统返回仍可退出。"],
+  "piko_newx_tools_lock": ["Lock", "锁定"],
+  "piko_newx_tools_unlock": ["Unlock", "解锁"]
 }

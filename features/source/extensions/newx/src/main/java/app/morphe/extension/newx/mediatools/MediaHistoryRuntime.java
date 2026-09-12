@@ -1,10 +1,12 @@
 package app.morphe.extension.newx.mediatools;
 
 import android.app.Activity;
+import android.app.Application;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.os.Bundle;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -17,6 +19,8 @@ public final class MediaHistoryRuntime {
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final List<Visit> VISITS = new ArrayList<>();
     private static boolean scheduled;
+    private static boolean lifecycleRegistered;
+    private static final Runnable TICK = MediaHistoryRuntime::tick;
 
     private static final class Visit {
         final WeakReference<Object> owner;
@@ -31,6 +35,7 @@ public final class MediaHistoryRuntime {
     // Called at the native getter/dispatcher boundary. Do not read Compose state synchronously.
     public static void bindPost(Object component) { bind(component, null, false); }
     public static void videoEvent(Object component, Object event) {
+        if (event != null && isSeekEvent(event)) VideoToolsRuntime.userSeek(component);
         // Playback emits frequently. Do not enqueue UI work for progress or prefetch events.
         if (event != null && (isVideoPageEvent(event) || isMediaSelectionEvent(event))) bind(component, event, true);
     }
@@ -42,6 +47,7 @@ public final class MediaHistoryRuntime {
             Object owner = weak.get();
             if (owner == null) return;
             try {
+                initializeLifecycle();
                 Visit visit = null;
                 for (Visit current : VISITS) if (current.owner.get() == owner) { visit = current; break; }
                 if (visit == null) {
@@ -60,10 +66,29 @@ public final class MediaHistoryRuntime {
 
     public static void wake() {
         if (Looper.myLooper() != Looper.getMainLooper()) { MAIN.post(MediaHistoryRuntime::wake); return; }
-        if (!scheduled && !VISITS.isEmpty() && MediaHistoryStore.enabled()) {
+        if (NewXUtils.findUsableActivity(Utils.getContext()) == null) return;
+        if (!scheduled && !VISITS.isEmpty() && (MediaHistoryStore.enabled() || VideoToolsRuntime.enabled())) {
             scheduled = true;
-            MAIN.postDelayed(MediaHistoryRuntime::tick, 300);
+            MAIN.postDelayed(TICK, 300);
         }
+    }
+
+    private static void initializeLifecycle() {
+        if (lifecycleRegistered || Utils.getContext() == null) return;
+        if (!(Utils.getContext().getApplicationContext() instanceof Application application)) return;
+        application.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
+            public void onActivityCreated(Activity activity, Bundle state) {}
+            public void onActivityStarted(Activity activity) {}
+            public void onActivityResumed(Activity activity) { MAIN.postDelayed(MediaHistoryRuntime::wake, 100); }
+            public void onActivityPaused(Activity activity) {
+                MAIN.removeCallbacks(TICK); scheduled = false;
+                for (Visit visit : VISITS) { visit.session.reset(); VideoToolsRuntime.inactive(visit.owner.get()); }
+            }
+            public void onActivityStopped(Activity activity) {}
+            public void onActivitySaveInstanceState(Activity activity, Bundle state) {}
+            public void onActivityDestroyed(Activity activity) {}
+        });
+        lifecycleRegistered = true;
     }
 
     public static void resetVisits() {
@@ -76,7 +101,9 @@ public final class MediaHistoryRuntime {
             Visit visit = i.next();
             Object owner = visit.owner.get();
             try {
-                if (owner == null || "DESTROYED".equals(lifecycle(owner).name())) { i.remove(); continue; }
+                if (owner == null || "DESTROYED".equals(lifecycle(owner).name())) {
+                    VideoToolsRuntime.inactive(owner); i.remove(); continue;
+                }
                 observe(visit);
             } catch (RuntimeException ignored) { visit.session.reset(); }
         }
@@ -84,7 +111,7 @@ public final class MediaHistoryRuntime {
     }
 
     private static boolean foreground(Object owner) {
-        if (!MediaHistoryStore.enabled() || !"RESUMED".equals(lifecycle(owner).name())) return false;
+        if (!"RESUMED".equals(lifecycle(owner).name())) return false;
         Context context = Utils.getContext();
         Activity activity = NewXUtils.findUsableActivity(context);
         if (activity == null || !activity.hasWindowFocus()) return false;
@@ -94,7 +121,12 @@ public final class MediaHistoryRuntime {
 
     private static void observe(Visit visit) {
         Object owner = visit.owner.get();
-        if (owner == null || !foreground(owner)) { visit.session.reset(); return; }
+        if (owner == null || !foreground(owner)) {
+            visit.session.reset(); VideoToolsRuntime.inactive(owner); return;
+        }
+        if (!MediaHistoryStore.enabled() && (!visit.video || !VideoToolsRuntime.enabled())) {
+            visit.session.reset(); VideoToolsRuntime.inactive(owner); return;
+        }
         long account = visit.video ? videoAccount(owner) : postAccount(owner);
         if (account <= 0) return;
         Object post;
@@ -123,6 +155,18 @@ public final class MediaHistoryRuntime {
         }
         String id = postId(post);
         if (id == null || id.isEmpty()) return;
+        if (visit.video) {
+            long position = -1, duration = -1;
+            boolean seekable = false;
+            // Preloaded progress may arrive after selection. Never use it for another video.
+            if (id.equals(progressPostId(owner)) && media.equals(progressMediaId(owner))) {
+                Object state = playbackState(owner);
+                if (state != null) {
+                    position = playbackPosition(state); duration = playbackDuration(state); seekable = playbackSeekable(state);
+                }
+            }
+            VideoToolsRuntime.update(owner, account + "/" + id + "/" + media, position, duration, seekable);
+        }
         if (visit.session.sample(account + "/" + id + "/" + media, true, true)) {
             MediaHistoryStore.record(account, id, media, visit.video ? "video" : "post",
                     getPostAuthorScreenName(post), getPostText(post), 0);
@@ -166,6 +210,14 @@ public final class MediaHistoryRuntime {
     private static String mediaId(Object media) { throw unpatched(); }
     private static boolean isMediaSelectionEvent(Object event) { throw unpatched(); }
     private static boolean isVideoPageEvent(Object event) { throw unpatched(); }
+    private static boolean isSeekEvent(Object event) { throw unpatched(); }
+    private static String progressPostId(Object owner) { throw unpatched(); }
+    private static String progressMediaId(Object owner) { throw unpatched(); }
+    private static Object playbackState(Object owner) { throw unpatched(); }
+    private static long playbackPosition(Object state) { throw unpatched(); }
+    private static long playbackDuration(Object state) { throw unpatched(); }
+    private static boolean playbackSeekable(Object state) { throw unpatched(); }
+    public static void seekVideo(Object owner, float fraction) { throw unpatched(); }
     private static String selectionMediaId(Object event) { throw unpatched(); }
     private static boolean isTimelinePost(Object value) { throw unpatched(); }
     private static boolean isTimelineModule(Object value) { throw unpatched(); }
