@@ -11,6 +11,7 @@ from pathlib import Path
 from build_piko import pre_build_cleanup, set_project_version
 from localization.apply_localization import apply
 from fixes.apply_fixes import apply_fixes
+from features.apply_features import apply_features
 
 ROOT = Path(__file__).resolve().parent
 
@@ -31,6 +32,9 @@ def main():
     report = apply(source)
     report.update(apply_fixes(source))
     report["translated_resources"] += report["fix_resources"]
+    if config.get("media_tools_preview", False):
+        report.update(apply_features(source))
+        report["translated_resources"] += report["feature_resources"]
     print(json.dumps(report, indent=2), flush=True)
     # Cleanup is confined to the new generated source checkout above.
     pre_build_cleanup(source)
@@ -49,6 +53,7 @@ def main():
     added_resources = list((source / "patches/src/main/resources/addresources/values-zh-rCN").rglob("*.xml"))
     source_files = {source / path for path in tracked} | set(added_resources)
     source_files.update(source / path for path in report["fix_files"])
+    source_files.update(source / path for path in report.get("feature_files", []))
     with zipfile.ZipFile(output / "localized-source.zip", "w", zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(source_files):
             if path.is_file():
@@ -59,6 +64,10 @@ def main():
         for path in sorted((ROOT / "fixes").rglob("*")):
             if path.is_file() and "__pycache__" not in path.parts:
                 archive.write(path, "list-fix-overlay/" + path.relative_to(ROOT / "fixes").as_posix())
+        if config.get("media_tools_preview", False):
+            for path in sorted((ROOT / "features").rglob("*")):
+                if path.is_file() and "__pycache__" not in path.parts:
+                    archive.write(path, "media-tools-overlay/" + path.relative_to(ROOT / "features").as_posix())
     for name in ("LICENSE", "NOTICE"):
         shutil.copy2(source / name, output / name)
     report["mpp_sha256"] = hashlib.sha256(artifact.read_bytes()).hexdigest()
