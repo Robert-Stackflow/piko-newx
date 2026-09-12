@@ -70,7 +70,9 @@ val mediaHistoryPatch = bytecodePatch(
         for (name in listOf("isTimelinePost", "isTimelineModule", "isTimelineModuleItem", "getModuleItem",
             "getModuleInnerContent", "getPostText", "getPostAuthorScreenName")) {
             val from = original.methods.filter { it.name == name }.one("model $name")
-            val to = runtime.methods.filter { it.name == name && it.parameterTypes == from.parameterTypes && it.returnType == from.returnType }.one("model target $name")
+            val to = runtime.methods.filter { it.name == name &&
+                it.parameterTypes.map(CharSequence::toString) == from.parameterTypes.map(CharSequence::toString) &&
+                it.returnType == from.returnType }.one("model target $name (${from.parameterTypes})${from.returnType}")
             runtime.methods.remove(to)
             runtime.methods.add(MutableMethod(ImmutableMethod(runtime.type, name, to.parameters, to.returnType, to.accessFlags,
                 to.annotations, to.hiddenApiRestrictions, from.implementation)))
