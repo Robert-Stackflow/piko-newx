@@ -8,6 +8,9 @@
 | `localization/zh-CN/`、`messages.json`、`source-edits.json` | 语言资源与文本替换规则 |
 | `fixes/source/` | 三个 Kotlin 补丁文件和四个 Java 扩展文件；职责见 fixes/README.md |
 | `fixes/apply_fixes.py` | 精确源码清单、附加资源及生成目录写入校验 |
+| `features/source/`、`features/apply_features.py` | 媒体工具十五文件清单、资源及四处上游源码集成；由 `media_tools_preview` 开启 |
+| `features/tools/AndroidMediaProbe.java` | 冻结目标的 28 类媒体预检及实际回调/作者桥接调用 |
+| `features/EVIDENCE.md`、`docs/releases/` | 逐版本构建/设备证据和发布说明；不把预检等同完整验收 |
 | `build_localized.py` | 克隆固定源码 → 测试 → 汉化 → 附加补丁 → 编译 → 对应源码归档 |
 | `tests/` | 翻译、纯 Java 策略、运行时模拟及构建输入回归测试 |
 | `fixes/tools/AndroidTypeProbe.java` | X 12.22.0 冻结目标的 14 类 ART 初始化预检，不是跨版本解析器 |
@@ -33,6 +36,9 @@ python -m unittest discover -s tests -v
 - `test_anchor_state.py`：身份匹配、重复 key、目标缺失、代次及取消。
 - `test_anchor_runtime.py`：生命周期/竞争模拟，禁止在 provider 构建期间读取快照。
 - `test_overlay_manifest.py`：源码清单精确匹配，缺文件、额外文件及同数量替换拒绝，ART 工具覆盖扩展类。
+- `test_media_overlay.py`、`test_media_ui.py`：媒体源码集成、历史迁移兼容、页面和回调回归。
+- `test_media_watch.py`、`test_media_resume.py`：前台记录判定、去重和安全续播。
+- `test_history_presentation.py`：类别循环和一至四媒体布局边界，共 155 项检查。
 
 这些测试不是 Android 真机验证，不覆盖全部混淆类的最终打补丁结果。
 
@@ -41,11 +47,13 @@ python -m unittest discover -s tests -v
 1. 检查干净工作区和 `source.json`；保留旧提交及已验包。
 2. 执行完整测试；源码漂移应失败，不通过放宽数量或匹配条件绕过。
 3. 在新检出目录运行 `python build_localized.py` 或手动启动 localized Actions。现有生成目录会拒绝覆盖，不要自动删除用户目录。
-4. 编译成功后，MPP 还需要对固定 X 输入打补丁；检查最终 DEX、签名、16 KiB 对齐和 14 类 ART 初始化。
+4. 编译成功后，MPP 还需要对固定 X 输入打补丁；检查最终 DEX、签名、16 KiB 对齐、14 类列表和 28 类媒体 ART 预检，以及实际回调/作者桥接调用。
 5. 新 APK 必须记录独立版本、来源、校验值和实际测试范围；不能沿用旧 APK 的“已验证”标签。
 6. 真机覆盖安装须保留账号数据，并保留已知回退包；遇到卡死先取应用范围证据并回退，不清数据。
 
-这轮整理只改构建校验、工具和说明，不改 `fixes/source/` 运行逻辑，不产生新 APK，也不操作手机。未请求时不自动发布 Release、改 main 或推送远程。
+7. 用户授权发布时，使用已验证的同一份 MPP/APK，不重新打包后沿用旧校验值。标明实际构建提交与 CI，附 `localized-source.zip`、LICENSE、NOTICE、报告及 SHA256；媒体功能未完整验收时标记为预览版。先上传到草稿，核对资产后公开。
+
+未请求时不自动发布 Release、改 main 或推送远程。整理文档不应改变运行逻辑或重写历史构建证据。
 
 ## 升级与历史提交
 
