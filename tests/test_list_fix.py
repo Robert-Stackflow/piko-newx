@@ -11,6 +11,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ListFixTests(unittest.TestCase):
+    def test_null_array_path_does_not_join_holder_return(self):
+        source = (ROOT / "fixes/source/patches/src/main/kotlin/app/crimera/patches/newx/timeline/PreserveListReadingPositionPatch.kt").read_text(encoding="utf-8")
+        self.assertIn("if-nez v0, :restore\n            const/4 v0, 0x0\n            return-object v0\n            :restore", source)
+        self.assertNotIn("if-eqz v0, :done", source)
+
     @unittest.skipUnless(os.getenv("PIKO_TEST_SOURCE"), "Needs pinned upstream checkout")
     def test_overlay_targets_are_additive_and_pinned(self):
         report = apply_fixes(Path(os.environ["PIKO_TEST_SOURCE"]), check_only=True)
