@@ -23,6 +23,12 @@ class MediaOverlayTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "source drift"):
                 media.edited(text, [("anchor", "new")], "test")
 
+    def test_probe_includes_all_runtime_classes(self):
+        probe = (media.ROOT / "tools/AndroidMediaProbe.java").read_text()
+        for file in media.files():
+            if file.suffix == ".java":
+                self.assertIn("app.morphe.extension.newx.mediatools." + file.stem, probe)
+
     @unittest.skipUnless(os.getenv("PIKO_TEST_SOURCE"), "Needs pinned source")
     def test_pinned_application(self):
         source = Path(os.environ["PIKO_TEST_SOURCE"])

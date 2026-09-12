@@ -44,6 +44,10 @@ val mediaHistoryPatch = bytecodePatch(
                 fragmentClassDescriptor = "Lapp/morphe/extension/newx/mediatools/HistoryFragment;")
             toggle(id = "newx.media_tools.history_enabled", strings = settingStrings("piko_newx_tools_history_enabled"),
                 order = 511, defaultValue = false)
+            toggle(id = "newx.media_tools.resume_video", strings = settingStrings("piko_newx_tools_resume_video"),
+                order = 513, defaultValue = false)
+            toggle(id = "newx.media_tools.touch_lock", strings = settingStrings("piko_newx_tools_touch_lock"),
+                order = 514, defaultValue = false)
             singleChoice(id = "newx.media_tools.history_days", strings = settingStrings("piko_newx_tools_history_days"),
                 order = 512, defaultValue = "30", options = listOf(choice("7", "piko_newx_tools_days_7"),
                     choice("30", "piko_newx_tools_days_30"), choice("90", "piko_newx_tools_days_90")))
@@ -200,6 +204,75 @@ val mediaHistoryPatch = bytecodePatch(
         val mediaId = emitter.refs().filter { it.definingClass == mediaInterface && it.returnType == STR && it.parameterTypes.isEmpty() }.one("selected media ID getter")
         bridge("isVideo", 1, "instance-of p0, p0, ${media.type}\nreturn p0")
         bridge("mediaId", 1, "check-cast p0, $mediaInterface\ninvoke-interface {p0}, $mediaId\nmove-result-object p0\nreturn-object p0")
+        val playback = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString",
+            strings = listOf("ImmersivePlaybackState(progress=", ", isSeekable=")).requireSingle("viewer playback state").originalClassDef
+        val playbackConstructor = mutableClassDefBy(playback.type).methods.filter {
+            it.name == "<init>" && it.parameterTypes.map(CharSequence::toString) == listOf("F", "J", "J", "Z", "Z", "F")
+        }.one("playback state constructor")
+        val parameterStart = playbackConstructor.implementation!!.registerCount - 9
+        fun stateField(offset: Int, type: String): FieldReference = playbackConstructor.instructions.filter { op ->
+            op is TwoRegisterInstruction && op.opcode in listOf(Opcode.IPUT_WIDE, Opcode.IPUT_BOOLEAN) &&
+                op.registerA == parameterStart + offset && op.registerB == parameterStart
+        }.mapNotNull { it.getReference<FieldReference>() }.filter { it.type == type }.one("playback parameter $offset")
+        val positionField = stateField(2, "J")
+        val durationField = stateField(4, "J")
+        val seekableField = stateField(7, "Z")
+        listOf(positionField, durationField, seekableField).forEach(::expose)
+        val stateFlows = dispatcher.instructions.withIndex().mapNotNull { (index, op) ->
+            if (op.opcode != Opcode.CHECK_CAST || op.getReference<com.android.tools.smali.dexlib2.iface.reference.TypeReference>()?.type != playback.type) return@mapNotNull null
+            dispatcher.instructions.take(index).takeLast(5).mapNotNull { it.getReference<FieldReference>() }
+                .lastOrNull { it.definingClass == video.type && it.type.startsWith("Lkotlinx/coroutines/flow/") }
+        }.distinctBy { it.toString() }
+        val stateFlow = stateFlows.one("playback state flow")
+        expose(stateFlow)
+        val stateGet = mutableClassDefBy(stateFlow.type).methods.filter { it.name == "getValue" && it.parameterTypes.isEmpty() }.one("playback flow getter")
+        bridge("playbackState", 1, "check-cast p0, ${video.type}\niget-object p0, p0, $stateFlow\ninvoke-virtual {p0}, $stateGet\nmove-result-object p0\nreturn-object p0")
+        val millis = Fingerprint(definingClass = "Lkotlin/time/Duration;", parameters = listOf("J"), returnType = "J")
+            .scopedMatchAll().map { it.method }.filter { AccessFlags.STATIC.isSet(it.accessFlags) && it.fields().any { field -> field.name == "MILLISECONDS" } }.one("duration milliseconds decoder")
+        for ((name, field) in listOf("playbackPosition" to positionField, "playbackDuration" to durationField))
+            bridge(name, 3, "check-cast p0, ${playback.type}\niget-wide v0, p0, $field\ninvoke-static {v0, v1}, $millis\nmove-result-wide v0\nreturn-wide v0")
+        bridge("playbackSeekable", 1, "check-cast p0, ${playback.type}\niget-boolean p0, p0, $seekableField\nreturn p0")
+        val progress = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString", strings = listOf("MediaProgress(index="))
+            .scopedMatchAll().filter { eventInterface in it.originalClassDef.interfaces }.one("current viewer progress event").originalClassDef
+        val envelope = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString", strings = listOf("ProgressEvent(event="))
+            .scopedMatchAll().filter { m -> m.originalClassDef.fields.any { it.type == progress.type } }.one("current progress envelope").originalClassDef
+        val progressField = video.fields.filter { it.type == envelope.type }.one("current native progress")
+        val envelopePost = envelope.fields.filter { it.type == models.postDescriptor }.one("progress post")
+        val envelopeEvent = envelope.fields.filter { it.type == progress.type }.one("progress event")
+        val progressMedia = progress.fields.filter { it.type == mediaInterface }.one("progress media")
+        listOf(progressField, envelopePost, envelopeEvent, progressMedia).forEach(::expose)
+        bridge("progressPostId", 1, """
+            check-cast p0, ${video.type}
+            iget-object p0, p0, $progressField
+            if-eqz p0, :none
+            iget-object p0, p0, $envelopePost
+            invoke-static {p0}, $RUNTIME->postId($OBJ)$STR
+            move-result-object p0
+            :none
+            return-object p0
+        """)
+        bridge("progressMediaId", 1, """
+            check-cast p0, ${video.type}
+            iget-object p0, p0, $progressField
+            if-eqz p0, :none
+            iget-object p0, p0, $envelopeEvent
+            iget-object p0, p0, $progressMedia
+            invoke-interface {p0}, $mediaId
+            move-result-object p0
+            :none
+            return-object p0
+        """)
+        val seek = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString", strings = listOf("BarSeekTo(progress="))
+            .scopedMatchAll().filter { eventInterface in it.originalClassDef.interfaces }.one("native viewer seek event").originalClassDef
+        val seekConstructor = mutableClassDefBy(seek.type).methods.filter { it.name == "<init>" && it.parameterTypes.map(CharSequence::toString) == listOf("F") }.one("seek constructor")
+        bridge("isSeekEvent", 1, "instance-of p0, p0, ${seek.type}\nreturn p0")
+        bridge("seekVideo", 3, """
+            new-instance v0, ${seek.type}
+            invoke-direct {v0, p1}, $seekConstructor
+            check-cast p0, ${video.type}
+            invoke-virtual {p0, v0}, $dispatcher
+            return-void
+        """)
         val result = models.postResultField
         val canonical = postModels.contextualCanonicalPostField
         val repost = postModels.contextualRepostedPostField
