@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 import unittest
 
-from fixes.apply_fixes import apply_fixes
+from fixes.apply_fixes import OVERLAY_FILES, apply_fixes
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -27,7 +27,9 @@ class ListFixTests(unittest.TestCase):
     def test_overlay_targets_are_additive_and_pinned(self):
         report = apply_fixes(Path(os.environ["PIKO_TEST_SOURCE"]), check_only=True)
         self.assertEqual(len(report["fix_files"]), 7)
+        self.assertEqual(set(report["fix_files"]), OVERLAY_FILES)
         self.assertEqual(report["fix_resources"], 8)
+        self.assertEqual(report["position_strategy"], "account-list-ui-key-v2")
 
     @unittest.skipUnless(shutil.which("javac") and shutil.which("java"), "Needs Java")
     def test_real_java_policy_and_per_list_persistence(self):

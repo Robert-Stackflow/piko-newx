@@ -5,6 +5,18 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent
+PATCH_PACKAGE = "patches/src/main/kotlin/app/crimera/patches/newx/timeline"
+EXTENSION_PACKAGE = "extensions/newx/src/main/java/app/morphe/extension/newx/timeline"
+# Keep the build fail-closed: the right count alone does not prove the right files.
+OVERLAY_FILES = frozenset({
+    f"{PATCH_PACKAGE}/PreserveListReadingPositionPatch.kt",
+    f"{PATCH_PACKAGE}/HomeTimelineOptionsPatch.kt",
+    f"{PATCH_PACKAGE}/ListPositionUiHooks.kt",
+    f"{EXTENSION_PACKAGE}/ListReadingPosition.java",
+    f"{EXTENSION_PACKAGE}/TimelineRepostFilter.java",
+    f"{EXTENSION_PACKAGE}/ListAnchorState.java",
+    f"{EXTENSION_PACKAGE}/ListPositionRuntime.java",
+})
 STRINGS = {
     "piko_newx_list_reading_position_title": ["Restore List reading position", "恢复列表阅读位置"],
     "piko_newx_list_reading_position_summary": [
@@ -18,22 +30,33 @@ for suffix, english, chinese in (("for_you", "For You", "为你推荐"), ("follo
         f"在{chinese}中展示转推的帖子。不影响引用帖。更改后请重启应用。"]
 
 
+def validated_overlay_files(source_root):
+    """Return the exact reviewed source files in deterministic archive/copy order."""
+    source_root = Path(source_root).resolve(strict=True)
+    paths = sorted(path for path in source_root.rglob("*") if path.is_file())
+    actual = {path.relative_to(source_root).as_posix() for path in paths}
+    if actual != OVERLAY_FILES:
+        missing = sorted(OVERLAY_FILES - actual)
+        unexpected = sorted(actual - OVERLAY_FILES)
+        raise ValueError(f"Fix source manifest mismatch: missing={missing}, unexpected={unexpected}")
+    for path in paths:
+        if not path.resolve().is_relative_to(source_root):
+            raise ValueError(f"Fix source escapes overlay: {path.relative_to(source_root)}")
+    return paths
+
+
 def apply_fixes(source, check_only=False):
     source = Path(source).resolve(strict=True)
     config = json.loads((ROOT.parent / "localization/source.json").read_text(encoding="utf-8"))
     if subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=source, text=True).strip() != config["commit"]:
         raise ValueError("Unreviewed upstream source")
     planned = []
-    for path in sorted((ROOT / "source").rglob("*")):
-        if not path.is_file():
-            continue
+    for path in validated_overlay_files(ROOT / "source"):
         relative = path.relative_to(ROOT / "source")
         target = source / relative
         if not target.resolve().is_relative_to(source) or target.exists():
             raise ValueError(f"Fix would overwrite existing source: {relative}")
         planned.append((target, path.read_bytes()))
-    if len(planned) != 7:
-        raise ValueError("Expected three patch files and four extensions")
     resources = []
     for locale, index in (("values", 0), ("values-zh-rCN", 1)):
         path = source / "patches/src/main/resources/addresources" / locale / "newx/strings.xml"
@@ -54,5 +77,11 @@ def apply_fixes(source, check_only=False):
         for path, tree in resources:
             ET.indent(tree, space="    ")
             tree.write(path, encoding="utf-8", xml_declaration=True)
-    return {"experimental_fix": "per-list-reading-position-v1", "fix_files": [p.relative_to(source).as_posix() for p, _ in planned],
-            "fix_resources": len(STRINGS), "runtime_tested": False}
+    return {
+        # Retain the old report identifier for consumers of existing build reports.
+        "experimental_fix": "per-list-reading-position-v1",
+        "position_strategy": "account-list-ui-key-v2",
+        "fix_files": [p.relative_to(source).as_posix() for p, _ in planned],
+        "fix_resources": len(STRINGS),
+        "runtime_tested": False,
+    }
