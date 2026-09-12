@@ -20,6 +20,7 @@ public final class ListAnchorState {
     public long generation() { return generation; }
     public Anchor current() { return current; }
     public boolean pending() { return pending != null; }
+    public boolean hasItems() { return !indices.isEmpty(); }
     public String keyAt(int index) { return index < 0 || index >= keys.length ? null : keys[index]; }
     public boolean entries(String[] next) {
         if (Arrays.equals(keys, next)) return false;

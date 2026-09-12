@@ -17,9 +17,9 @@ class RuntimeTests(unittest.TestCase):
             'private static Object nativeInteraction(Object lazy) { return null; }': 'private static Object nativeInteraction(Object lazy) { return lazy; }',
             'private static Object nativeLayout(Object lazy) { return null; }': 'private static Object nativeLayout(Object lazy) { return ((Fixture.Lazy)lazy).layout; }',
             'private static Object nativeMeasuredKey(Object lazy) { return null; }': 'private static Object nativeMeasuredKey(Object lazy) { return ((Fixture.Lazy)lazy).key; }',
-            'private static int[] nativeSnapshot(Object lazy) { return null; }': 'private static int[] nativeSnapshot(Object lazy) { var s=(Fixture.Lazy)lazy; return new int[]{s.index,s.offset,s.moving?1:0}; }',
+            'private static int[] nativeSnapshot(Object lazy) { return null; }': 'private static int[] nativeSnapshot(Object lazy) { if(Fixture.building)throw new AssertionError("snapshot read during composition"); var s=(Fixture.Lazy)lazy; return new int[]{s.index,s.offset,s.moving?1:0}; }',
             'private static void nativeRequest(Object lazy,int index,int offset) {}': 'private static void nativeRequest(Object lazy,int index,int offset) { var s=(Fixture.Lazy)lazy; s.requests++; s.index=index; s.offset=offset; s.key=s.keys[index]; s.layout=new Object(); }',
-            'private static int nativeCount(Object provider) { return 0; }': 'private static int nativeCount(Object provider) { return ((String[])provider).length; }',
+            'private static int nativeCount(Object provider) { return 0; }': 'private static int nativeCount(Object provider) { if(Fixture.building)throw new AssertionError("provider traversal during composition"); return ((String[])provider).length; }',
             'private static Object nativeKeyAt(Object provider,int index) { return null; }': 'private static Object nativeKeyAt(Object provider,int index) { return ((String[])provider)[index]; }',
             'private static String nativeKey(Object key) { return null; }': 'private static String nativeKey(Object key) { return (String)key; }',
         }
@@ -45,6 +45,7 @@ public class Handler { static java.util.Queue<Runnable> q=new java.util.ArrayDeq
 public class Fixture {
  enum Type { LIST_POSTS, FOLLOWING }
  static int checks;
+ static boolean building;
  static class Lazy { Object layout=new Object(); String[] keys; String key; int index,offset,requests; boolean moving;
    Lazy(String...keys){this.keys=keys;key=keys.length==0?null:keys[0];} }
  static void check(boolean v){if(!v)throw new AssertionError("runtime "+checks); checks++;}
@@ -52,7 +53,7 @@ public class Fixture {
  static Object flow(long account,String id){Object f=new Object(); ListPositionRuntime.register(f,Type.LIST_POSTS,id,account);return f;}
  public static void main(String[] args){
    Object f=flow(1,"list"); Lazy s=new Lazy("a","b","c");
-   ListPositionRuntime.bind(f,s); ListPositionRuntime.render(s,s.keys); steps(3); check(s.requests==0);
+   ListPositionRuntime.bind(f,s); building=true; ListPositionRuntime.render(s,s.keys); building=false; steps(3); check(s.requests==0);
    s.index=1;s.offset=60;s.key="b";steps(12);
    String[] next={"new",null,"a","b","c"};ListPositionRuntime.render(s,next);s.keys=next;
    s.index=0;s.offset=0;s.key="new";s.layout=new Object(); steps(8);
@@ -60,6 +61,11 @@ public class Fixture {
    steps(12);ListPositionRuntime.pause(s);
    Lazy restart=new Lazy(next);ListPositionRuntime.render(restart,restart.keys);ListPositionRuntime.bind(f,restart);
    steps(8);check(restart.requests==1);check(restart.index==3 && restart.offset==60);
+   // An empty/unknown-only intermediate provider must not consume a persisted identity.
+   Lazy loading=new Lazy((String)null);ListPositionRuntime.render(loading,loading.keys);ListPositionRuntime.bind(f,loading);
+   loading.layout=new Object();steps(8);check(loading.requests==0);
+   loading.keys=next;ListPositionRuntime.render(loading,next);loading.key="new";loading.layout=new Object();steps(8);
+   check(loading.requests==1 && loading.index==3);ListPositionRuntime.pause(loading);
    Lazy other=new Lazy(next);Object f2=flow(2,"list");ListPositionRuntime.bind(f2,other);ListPositionRuntime.render(other,other.keys);
    steps(8);check(other.requests==0);ListPositionRuntime.pause(other);
    String[] newer={"newer","b"};ListPositionRuntime.render(restart,newer);restart.keys=newer;restart.layout=new Object();

@@ -24,7 +24,6 @@ public final class ListPositionRuntime {
         final String scope;
         final ListAnchorState state;
         WeakReference<Object> provider = new WeakReference<>(null);
-        Object previousLayout;
         long changedAt, lastWrite;
         String writtenKey;
         String awaitingKey;
@@ -54,7 +53,6 @@ public final class ListPositionRuntime {
             INTERACTIONS.put(nativeInteraction(lazy),new WeakReference<>(lazy));
             WeakReference<Object> ref=PROVIDERS.get(lazy);
             if(ref!=null && ref.get()!=null) render(lazy,ref.get());
-            session.previousLayout=null; // an already measured retained tab is ready too
             trace("bind",session); schedule();
         } catch(RuntimeException error) { Log.d("PikoListAnchor","bind unavailable"); }
     }
@@ -68,7 +66,12 @@ public final class ListPositionRuntime {
     }
     public static void render(Object lazy,Object provider) {
         if(Looper.myLooper()!=Looper.getMainLooper()) return;
+        // Called inside Compose's derived item-provider calculation. NEVER read snapshots here:
+        // provider -> layoutInfo -> provider is a cyclic dependency and can freeze the main thread.
         PROVIDERS.put(lazy,new WeakReference<>(provider));
+        schedule();
+    }
+    private static void publish(Object lazy,Object provider) {
         Session session=ACTIVE.get(lazy);
         if(session==null || session.provider.get()==provider) return;
         try {
@@ -79,7 +82,6 @@ public final class ListPositionRuntime {
             for(int i=0;i<count;i++) keys[i]=nativeKey(nativeKeyAt(provider,i));
             session.provider=new WeakReference<>(provider);
             if(session.state.entries(keys)) {
-                session.previousLayout=nativeLayout(lazy);
                 session.changedAt=SystemClock.uptimeMillis(); trace("data",session);
             }
             schedule();
@@ -111,6 +113,9 @@ public final class ListPositionRuntime {
         for(Map.Entry<Object,Session> entry:new ArrayList<>(ACTIVE.entrySet())) {
             Object lazy=entry.getKey(); Session session=entry.getValue();
             try {
+                WeakReference<Object> ref=PROVIDERS.get(lazy);
+                Object provider=ref==null?null:ref.get();
+                if(provider!=null) publish(lazy,provider);
                 int[] snapshot=nativeSnapshot(lazy);
                 if(snapshot==null || snapshot[2]!=0 || session.provider.get()==null) continue;
                 if(session.awaitingKey!=null) {
@@ -119,7 +124,7 @@ public final class ListPositionRuntime {
                     else { session.awaitingKey=null; session.state.cancel(); }
                 }
                 if(session.state.pending()) {
-                    if(nativeMeasuredKey(lazy)==null || nativeLayout(lazy)==session.previousLayout) continue;
+                    if(!session.state.hasItems() || nativeMeasuredKey(lazy)==null) continue;
                     if(SystemClock.uptimeMillis()-session.changedAt<240) continue;
                     int[] target=session.state.resolve(session.state.generation());
                     if(target!=null) {
@@ -130,7 +135,6 @@ public final class ListPositionRuntime {
                     trace("missing",session);
                 }
                 observe(lazy,session); persist(session,false);
-                if(!session.state.pending()) session.previousLayout=null;
             } catch(RuntimeException error) { session.state.cancel(); }
         }
         schedule();
