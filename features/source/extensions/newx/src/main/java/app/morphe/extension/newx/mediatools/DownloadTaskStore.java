@@ -65,7 +65,7 @@ public final class DownloadTaskStore {
                 db.insertWithOnConflict("tasks", null, values, SQLiteDatabase.CONFLICT_IGNORE);
                 // Never prune an active task. Completed metadata is bounded independently.
                 db.execSQL("DELETE FROM tasks WHERE id IN (SELECT id FROM tasks WHERE state IN "
-                        + "('complete','failed','missing') ORDER BY updated DESC LIMIT -1 OFFSET 1000)");
+                        + "('complete','failed','missing','retried') ORDER BY updated DESC LIMIT -1 OFFSET 1000)");
             } catch (RuntimeException ignored) {}
         });
     }
@@ -137,6 +137,12 @@ public final class DownloadTaskStore {
                                 value(c, "post"), value(c, "author"), state, reason, value(c, "uri"),
                                 bytes, total, c.getLong(c.getColumnIndexOrThrow("updated"))));
                     }
+                }
+                // Persist terminal system states after closing the cursor, without reordering it.
+                for (Task task : tasks) if (task.state().equals("missing") || task.state().equals("failed")) {
+                    ContentValues terminal = new ContentValues();
+                    terminal.put("state", task.state()); terminal.put("reason", task.reason());
+                    db.update("tasks", terminal, "id=? AND state NOT IN ('complete','retried')", new String[]{Long.toString(task.id())});
                 }
             } catch (RuntimeException ignored) { failed = true; }
             done.accept(new Result(tasks, failed));
