@@ -84,6 +84,7 @@ val homeTimelineRepostsPatch = bytecodePatch(
         success.addInstructions(0, """
             invoke-static {p2, p1}, $REPOST_FILTER->filter(${HO_OBJECT}Ljava/lang/Enum;)$HO_OBJECT
             move-result-object p2
+            check-cast p2, ${success.parameterTypes[1]}
         """.trimIndent())
     }
 }
