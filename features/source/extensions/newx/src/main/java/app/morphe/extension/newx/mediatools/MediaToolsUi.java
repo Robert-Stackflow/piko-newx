@@ -101,6 +101,25 @@ public final class MediaToolsUi {
             paint.setColor(color); paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(1.8f);
             paint.setStrokeCap(Paint.Cap.ROUND); paint.setStrokeJoin(Paint.Join.ROUND);
             switch (glyph) {
+                case "all" -> {
+                    canvas.drawRoundRect(6, 3, 21, 18, 2, 2, paint);
+                    canvas.drawLine(3, 7, 3, 21, paint); canvas.drawLine(3, 21, 17, 21, paint);
+                    canvas.drawLine(10, 8, 17, 8, paint); canvas.drawLine(10, 12, 16, 12, paint);
+                }
+                case "post" -> {
+                    canvas.drawRoundRect(3, 3, 21, 21, 2, 2, paint);
+                    canvas.drawLine(7, 8, 17, 8, paint); canvas.drawLine(7, 12, 17, 12, paint);
+                    canvas.drawLine(7, 16, 13, 16, paint);
+                }
+                case "video" -> {
+                    canvas.drawRoundRect(2, 4, 22, 20, 3, 3, paint);
+                    Path p = new Path(); p.moveTo(10, 8); p.lineTo(16, 12); p.lineTo(10, 16); p.close();
+                    paint.setStyle(Paint.Style.FILL); canvas.drawPath(p, paint);
+                }
+                case "person" -> {
+                    canvas.drawCircle(12, 8, 4, paint);
+                    canvas.drawArc(4, 14, 20, 28, 180, 180, false, paint);
+                }
                 case "more" -> {
                     paint.setStyle(Paint.Style.FILL);
                     canvas.drawCircle(5, 12, 1.7f, paint); canvas.drawCircle(12, 12, 1.7f, paint); canvas.drawCircle(19, 12, 1.7f, paint);

@@ -183,10 +183,12 @@ public final class MediaHistoryRuntime {
             VideoToolsRuntime.update(owner, account + "/" + id + "/" + media, position, duration, seekable);
         }
         if (visit.session.sample(account + "/" + id + "/" + media, true, true)) {
+            Object author = postAuthor(post, visit.gallery);
             MediaHistoryStore.record(account, id, media, visit.video ? "video" : "post",
                     visit.gallery ? galleryAuthor(post) : getPostAuthorScreenName(post),
                     visit.gallery ? galleryText(post) : getPostText(post), 0,
-                    visit.gallery ? previewItems(galleryMedia(post), null) : previews(post, visit.video ? media : null));
+                    visit.gallery ? previewItems(galleryMedia(post), null) : previews(post, visit.video ? media : null),
+                    author == null ? "" : authorName(author), author == null ? "" : authorAvatar(author));
         }
     }
 
@@ -238,6 +240,9 @@ public final class MediaHistoryRuntime {
     private static Enum<?> lifecycle(Object owner) { throw unpatched(); }
     private static long videoAccount(Object owner) { throw unpatched(); }
     private static long postAccount(Object owner) { throw unpatched(); }
+    private static Object postAuthor(Object post, boolean gallery) { throw unpatched(); }
+    private static String authorName(Object author) { throw unpatched(); }
+    private static String authorAvatar(Object author) { throw unpatched(); }
     private static long galleryAccount(Object owner) { throw unpatched(); }
     private static Object galleryPost(Object owner) { throw unpatched(); }
     private static String galleryPostId(Object post) { throw unpatched(); }

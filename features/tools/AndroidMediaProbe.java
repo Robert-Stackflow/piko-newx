@@ -24,6 +24,8 @@ public final class AndroidMediaProbe {
             "app.morphe.extension.newx.mediatools.HeaderToolsRuntime$HeaderUpdate",
             "app.morphe.extension.newx.mediatools.HeaderToolsRuntime$VideoActions",
             "app.morphe.extension.newx.mediatools.HistoryFragment$HistoryRow",
+            "app.morphe.extension.newx.mediatools.HistoryFragment$MediaGrid",
+            "app.morphe.extension.newx.mediatools.HistoryPresentation",
             "app.morphe.extension.newx.mediatools.DownloadsFragment$TaskRow"
         };
         String[] targets = args.length == 0 ? names : args;
@@ -62,6 +64,18 @@ public final class AndroidMediaProbe {
             forward.setAccessible(true); forward.invoke(null, nativeCallback, new Object());
             if (invocations[0] != 1) throw new AssertionError("Native action was not forwarded once");
             System.out.println("ART_NATIVE_ACTION_FORWARD_PASS 1");
+            // Exact frozen-APK user interface: verifies name/avatar forwarding without real user data.
+            Class<?> user = Class.forName("com.x.models.mh");
+            Object publicAuthor = java.lang.reflect.Proxy.newProxyInstance(user.getClassLoader(), new Class<?>[]{user},
+                    (proxy, method, values) -> method.getName().equals("getName") ? "Probe Name"
+                            : method.getName().equals("c") ? "https://pbs.twimg.com/profile_images/probe.jpg" : null);
+            Class<?> history = Class.forName("app.morphe.extension.newx.mediatools.MediaHistoryRuntime");
+            for (String property : new String[]{"authorName", "authorAvatar"}) {
+                java.lang.reflect.Method getter = history.getDeclaredMethod(property, Object.class); getter.setAccessible(true);
+                String expected = property.equals("authorName") ? "Probe Name" : "https://pbs.twimg.com/profile_images/probe.jpg";
+                if (!expected.equals(getter.invoke(null, publicAuthor))) throw new AssertionError("Wrong author property: " + property);
+            }
+            System.out.println("ART_AUTHOR_PRESENTATION_PASS 2");
         }
         System.out.println("ART_MEDIA_PASS " + targets.length);
     }

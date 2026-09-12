@@ -12,12 +12,15 @@ import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patcher.patch.*
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.util.getReference
+import app.morphe.util.registersUsed
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MethodImplementationBuilder
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.StringReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 
 private const val RUNTIME = "Lapp/morphe/extension/newx/mediatools/MediaHistoryRuntime;"
@@ -247,6 +250,64 @@ val mediaHistoryPatch = bytecodePatch(
         val galleryCanonical = postModels.contextualCanonicalPostField
         val galleryMedia = mediaModels.canonicalPostMediaField
         listOf(galleryCanonical, galleryMedia, authorField).forEach(::expose)
+        // Capture only the two public author presentation properties, not a whole user object.
+        val minimalUser = Fingerprint(definingClass = "Lcom/x/models/", name = "toString",
+            strings = listOf("MinimalUser(id=", ", profileImageUrl=")).requireSingle("history author presentation")
+        // The label is passed to an R8 StringBuilder helper. Do not scan past a register's
+        // later reuse for another label (e.g. profile description/background image).
+        val userOps = minimalUser.method.instructions.toList()
+        val avatarLabel = userOps.withIndex().filter {
+            it.value.getReference<StringReference>()?.string == ", profileImageUrl="
+        }.one("author avatar label")
+        val labelRegister = (avatarLabel.value as? OneRegisterInstruction)?.registerA
+            ?: throw PatchException("Media history: unsupported avatar label register")
+        val appendAvatar = userOps.withIndex().drop(avatarLabel.index + 1).take(5).filter { (_, op) ->
+            op.getReference<MethodReference>()?.parameterTypes?.map(CharSequence::toString) ==
+                listOf("Ljava/lang/StringBuilder;", STR, STR, STR, STR) && op.registersUsed.getOrNull(2) == labelRegister
+        }.one("author avatar label/value append")
+        val valueRegister = appendAvatar.value.registersUsed[3]
+        val avatarField = userOps.subList(avatarLabel.index + 1, appendAvatar.index).filter {
+            it.opcode == Opcode.IGET_OBJECT && (it as TwoRegisterInstruction).registerA == valueRegister
+        }.mapNotNull { it.getReference<FieldReference>() }.filter {
+            it.definingClass == minimalUser.originalClassDef.type && it.type == STR
+        }.one("public avatar URL field")
+        val avatarGetter = mutableClassDefBy(minimalUser.originalClassDef.type).methods.filter { method ->
+            method.parameterTypes.isEmpty() && method.returnType == STR && method.refs().isEmpty() &&
+                method.fields().singleOrNull()?.toString() == avatarField.toString()
+        }.one("author avatar getter")
+        val userContract = minimalUser.originalClassDef.interfaces.map { mutableClassDefBy(it) }.filter { type ->
+            type.methods.any { it.name == "getName" && it.returnType == STR && it.parameterTypes.isEmpty() } &&
+                type.methods.any { it.name == avatarGetter.name && it.returnType == STR && it.parameterTypes.isEmpty() }
+        }.one("shared author display contract")
+        if (authorField.type != userContract.type && userContract.type !in classDefBy(authorField.type).interfaces)
+            throw PatchException("Media history: post author does not implement presentation contract")
+        bridge("postAuthor", 3, """
+            if-nez p1, :contextual
+            check-cast p0, ${models.postDescriptor}
+            iget-object p0, p0, ${models.postResultField}
+            :contextual
+            instance-of v0, p0, ${postModels.contextualPostDescriptor}
+            if-eqz v0, :none
+            check-cast p0, ${postModels.contextualPostDescriptor}
+            iget-object p0, p0, $galleryCanonical
+            if-eqz p0, :none
+            check-cast p0, ${postModels.canonicalPostDescriptor}
+            iget-object p0, p0, $authorField
+            return-object p0
+            :none
+            const/4 p0, 0x0
+            return-object p0
+        """)
+        for ((name, getterName) in listOf("authorName" to "getName", "authorAvatar" to avatarGetter.name)) {
+            val getter = userContract.methods.filter { it.name == getterName && it.returnType == STR &&
+                it.parameterTypes.isEmpty() }.one("author $name interface getter")
+            bridge(name, 1, """
+                check-cast p0, ${userContract.type}
+                invoke-interface {p0}, $getter
+                move-result-object p0
+                return-object p0
+            """)
+        }
         bridge("galleryAuthor", 1, """
             check-cast p0, ${postModels.contextualPostDescriptor}
             iget-object p0, p0, $galleryCanonical
