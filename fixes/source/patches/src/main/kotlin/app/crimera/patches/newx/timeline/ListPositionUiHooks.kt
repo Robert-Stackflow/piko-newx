@@ -333,7 +333,11 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
         return-object p1
     """)
     val refreshCandidates=dispatcher.calls().filter { it.name=="<init>" }.map { it.definingClass }.distinct()
-        .map { context.mutableClassDefBy(it) }.filter { it.superclass=="Lkotlin/coroutines/jvm/internal/SuspendLambda;" }
+        // Platform constructors also occur in the dispatcher but have no ClassDef
+        // in the APK. Only in-APK SuspendLambda owners are candidates; the required
+        // pull-refresh callsite is still checked for exact cardinality below.
+        .mapNotNull { runCatching { context.mutableClassDefBy(it) }.getOrNull() }
+        .filter { it.superclass=="Lkotlin/coroutines/jvm/internal/SuspendLambda;" }
         .flatMap { it.methods }.filter { m -> m.name=="invokeSuspend" &&
             m.fields().any { it.name=="PULL_TO_REFRESH" } && m.calls().any { it.toString()==cursorResolver.toString() }
         }
