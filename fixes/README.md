@@ -1,13 +1,14 @@
 # 当前自定义补丁
 
-当前配置：`localization/source.json`，版本 `3.10.6-zh.2-listfix.6.2`，目标 X `12.22.0-prod.01`。
+当前开发配置：`localization/source.json`，候选 `3.10.6-zh.3-media.dev14`，目标 X `12.22.0-prod.01`。新实现和验证边界见 [位置恢复 v3](position-restoration-v3.md)，未经真机验收不视为已解决。
 构建仓库已 rebase 到上游 v3.19.3；实际补丁源码仍固定为 `crimera/piko@bc03fce4352bcb7ee89299722d0e900af3fb8a82`。两者不是同一个版本。
 
 ## 已实现功能
 
 - 为你推荐、正在关注（含 ranked Following）、所有列表三组独立转推开关，默认展示；引用帖不因转推开关单独被隐藏。
 - 首页固定列表标签只显示名称，其他标签类型保持原样。
-- 实验性列表位置恢复：按账号和原生列表 ID 保存最终显示项的完整 key 与偏移。仅唯一匹配时恢复，缺失时不使用旧序号、不补回旧帖。
+- 实验性列表位置恢复：按账号和 List ID 保存测量确认后的 key/偏移；精确匹配优先，排序改变时允许唯一 entry 身份匹配。目标暂缺保留书签，不使用旧序号、不补回旧帖。
+- 区分服务器与用户回顶；启用位置保护的 List 手动刷新复用原生 Top cursor 查找，服务器增量行为待实测。
 
 每张列表单独的转推/回复/关键词配置**尚未实现且已搁置**，不要与“三类时间线开关”混淆。
 
@@ -29,8 +30,8 @@ Kotlin 补丁位于 `source/patches/src/main/kotlin/app/crimera/patches/newx/tim
 
 ## 不可破坏的边界
 
-- 不修改请求、仓库数据、刷新合并策略、分页游标或数据库；不复活已撤回的 listfix.4 合并逻辑。
-- 位置 key 使用最终 `RegularItem(entryId, sortIndex)`，不是仓库序号或裸帖子 ID；完整 key 改变也可能导致无法恢复。
+- 不修改仓库数据、刷新合并实现或数据库，不补回旧帖，不复活 listfix.4。唯一请求调整是启用 List 的手动刷新复用 Top cursor，无 Top 时原生返回 null，自动刷新保持原样。
+- 使用最终 `RegularItem(entryId, sortIndex)`，不是旧序号或裸帖子 ID；仅 entry 身份唯一时允许排序键变化后的回退匹配，测量确认仍用完整 key。
 - 开关 `newx.timeline.list_reading_position` 和上游 `newx.timeline.restore_position` 共同控制列表身份恢复。非列表沿用上游逻辑。
 - `render` 在 Compose provider 构建期间仅保存弱引用并排队；禁止同步读布局快照、遍历 provider 或请求滚动。相关工作在 Handler 执行。
 - 持久化采用 `piko_newx_list_anchors_v2`，不迁移旧序号。参数、设置键、原生绑定语义和未知模型保留策略不能在整理时顺便改变。

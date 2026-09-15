@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ListFixTests(unittest.TestCase):
-    def test_native_refresh_is_not_modified(self):
+    def test_no_viewport_cache_or_old_data_merge_is_injected(self):
         patch = (ROOT / "fixes/source/patches/src/main/kotlin/app/crimera/patches/newx/timeline/PreserveListReadingPositionPatch.kt").read_text(encoding="utf-8")
         helper = (ROOT / "fixes/source/extensions/newx/src/main/java/app/morphe/extension/newx/timeline/ListReadingPosition.java").read_text(encoding="utf-8")
         for forbidden in ("VIEWPORT_AWARE_AUTO_REFRESH", "pikoListMergeMode", "pikoListScrollToTop", "capture_list_viewport", "preserveMerge"):
@@ -29,7 +29,7 @@ class ListFixTests(unittest.TestCase):
         self.assertEqual(len(report["fix_files"]), 7)
         self.assertEqual(set(report["fix_files"]), OVERLAY_FILES)
         self.assertEqual(report["fix_resources"], 8)
-        self.assertEqual(report["position_strategy"], "account-list-ui-key-v2")
+        self.assertEqual(report["position_strategy"], "account-list-confirmed-anchor-v3")
 
     @unittest.skipUnless(shutil.which("javac") and shutil.which("java"), "Needs Java")
     def test_real_java_policy_and_per_list_persistence(self):

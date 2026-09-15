@@ -16,7 +16,12 @@ import app.morphe.extension.newx.timeline.ListAnchorState;
 public class AnchorTest {
   static int checks;
   static void check(boolean b) { if(!b) throw new AssertionError("check "+checks); checks++; }
-  static void target(ListAnchorState s,int i,int o) { check(Arrays.equals(s.resolve(s.generation()),new int[]{i,o})); }
+  static void target(ListAnchorState s,int i,int o) {
+    check(Arrays.equals(s.resolve(s.generation()),new int[]{i,o}));
+    check(s.pending());
+    check(!s.confirm(s.generation(),s.keyAt(i),i,o+1));
+    check(s.confirm(s.generation(),s.keyAt(i),i,o));
+  }
   public static void main(String[] args) {
     var s=new ListAnchorState(new ListAnchorState.Anchor("b",90));
     s.entries(new String[]{null}); check(s.pending());
@@ -25,10 +30,14 @@ public class AnchorTest {
     check(s.observe("b",1,72));
     String[] input={"new",null,"a","b","c"}; s.entries(input); input[3]="mutated";
     target(s,3,72); check(s.keyAt(3).equals("b"));
-    s.entries(new String[]{"a","c"}); check(s.resolve(s.generation())==null); check(s.current()==null);
+    s.entries(new String[]{"a","c"}); check(s.resolve(s.generation())==null); check(s.current().key.equals("b"));
+    check(s.pending()); check(!s.observe("a",0,0));
+    s.entries(new String[]{"a","b","c"}); target(s,1,72);
+    s.cancel(); check(s.current().key.equals("b"));
+    s.entries(new String[]{"a","c"});
     check(s.observe("c",1,15)); s.entries(new String[]{"c","c"}); check(s.resolve(s.generation())==null);
     check(!s.observe("c",0,1));
-    s.entries(new String[]{"a","b"}); check(s.observe("b",1,3));
+    s.cancel(); s.entries(new String[]{"a","b"}); check(s.observe("b",1,3));
     s.entries(new String[]{"x","a","b"}); long stale=s.generation();
     s.entries(new String[]{"y","x","a","b"}); check(s.resolve(stale)==null); target(s,3,3);
     check(s.observe("b",3,40)); s.entries(new String[]{"z","b"}); s.cancel();
@@ -39,6 +48,18 @@ public class AnchorTest {
     var account2=new ListAnchorState(null); account2.entries(new String[]{"b"}); check(!account2.pending());
     var restart=new ListAnchorState(new ListAnchorState.Anchor("deleted",1));
     restart.entries(new String[]{"a"}); check(restart.resolve(restart.generation())==null);
+    check(restart.pending()); check(restart.current().key.equals("deleted"));
+    restart.entries(new String[]{"a","deleted"}); target(restart,1,1);
+    var ranked=new ListAnchorState(new ListAnchorState.Anchor("regular:3:a:b:100",29));
+    ranked.entries(new String[]{"regular:3:a:b:200"}); target(ranked,0,29);
+    check(ranked.current().key.equals("regular:3:a:b:200"));
+    ranked.entries(new String[]{"regular:3:a:b:300","regular:3:a:b:400"});
+    check(ranked.resolve(ranked.generation())==null); check(ranked.pending());
+    ranked.entries(new String[]{"regular:3:a:b:300"});
+    long generation=ranked.generation(); check(ranked.resolve(generation)!=null);
+    ranked.entries(new String[]{"x","regular:3:a:b:300"});
+    check(!ranked.confirm(generation,"regular:3:a:b:300",0,29)); target(ranked,1,29);
+    ranked.clear(); check(ranked.current()==null && !ranked.pending());
     for(int n=0;n<100;n++) {
       var p=new ListAnchorState(new ListAnchorState.Anchor("anchor",n));
       String[] posts=new String[n+1]; Arrays.fill(posts,null); posts[n]="anchor";

@@ -2,6 +2,8 @@
 
 这是 [crimera/piko-newx](https://github.com/crimera/piko-newx) 的非官方 fork。当前自定义开发分支为 `codex/media-tools`；`main`、`codex/zh-cn` 与 `codex/list-scroll-fix` 不代表本分支最新功能。上游构建仓库从 [Piko x-lite](https://github.com/crimera/piko/tree/x-lite) 拉取真正的补丁源码；本仓库在编译前应用经校验的中文翻译和附加源码。
 
+开发中的 **dev14** 重做了列表恢复确认、自动/用户回顶来源区分，并让启用保护的列表手动刷新复用原生顶部游标；没有补回旧帖。见 [位置恢复 v3](fixes/position-restoration-v3.md)。尚未真机验收；下文 dev13 验证结果只属于已发布的旧包。
+
 当前补丁源码锁定 Piko NewX **3.10.6**（`bc03fce4352bcb7ee89299722d0e900af3fb8a82`），中文/自定义预览版本为 **3.10.6-zh.3-media.dev13**，目标 X **12.22.0-prod.01**，以 [source.json](localization/source.json) 为准。构建仓库已 rebase 到上游 **v3.19.3**，不代表中文补丁或手机 APK 已升级到该版本。
 
 ## 当前功能与状态

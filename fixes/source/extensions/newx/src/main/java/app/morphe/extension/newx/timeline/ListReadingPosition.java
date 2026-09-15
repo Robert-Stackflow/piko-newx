@@ -9,7 +9,7 @@ public final class ListReadingPosition {
         return type != null && "LIST_POSTS".equals(type.name())
             && SettingsRegistry.getBooleanOrDefault("newx.timeline.list_reading_position",true);
     }
-    private static boolean active(Enum<?> type, String id) {
+    public static boolean active(Enum<?> type, String id) {
         return enabled(type) && id != null && !id.isEmpty()
             && SettingsRegistry.getBooleanOrDefault("newx.timeline.restore_position",true);
     }

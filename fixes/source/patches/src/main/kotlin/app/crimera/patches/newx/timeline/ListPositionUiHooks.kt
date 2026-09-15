@@ -7,6 +7,7 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.instructions
+import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
@@ -16,6 +17,9 @@ import com.android.tools.smali.dexlib2.builder.MethodImplementationBuilder
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.TypeReference
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OffsetInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
@@ -223,9 +227,9 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
         return-object v0
     """)
     val dispatcher = component.methods.filter { m -> m.instructions.any { it.getReference<FieldReference>()?.type=="Lkotlin/jvm/functions/Function0;" } &&
-        m.calls().any { it.name=="invoke" && it.definingClass=="Lkotlin/jvm/functions/Function0;" } && m.returnType=="V" && m.name!="<init>" }.unique("user jump dispatcher")
+        m.calls().any { it.name=="invoke" && it.definingClass=="Lkotlin/jvm/functions/Function0;" } && m.returnType=="V" && m.name!="<init>" }.unique("shared jump dispatcher")
     val callbackLoad = dispatcher.instructions.withIndex().filter { it.value.opcode==Opcode.IGET_OBJECT &&
-        it.value.getReference<FieldReference>()?.type=="Lkotlin/jvm/functions/Function0;" }.unique("explicit jump callback")
+        it.value.getReference<FieldReference>()?.type=="Lkotlin/jvm/functions/Function0;" }.unique("shared jump callback")
     val receiver = (callbackLoad.value as TwoRegisterInstruction).registerB
     val topBridge = listBridge(componentType,"pikoCancelListAnchor",emptyList(),"V",2,"""
         iget-object v0, p0, $flowField
@@ -234,5 +238,119 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
     """)
     component.methods.add(topBridge)
     dispatcher.addInstructions(callbackLoad.index,"invoke-virtual {v$receiver}, $topBridge")
-    println("List anchor: account-scoped final UI keys, lifecycle binding, drag/top cancellation; repository untouched")
+    // This dispatcher is shared by users and the server. Intercept ONLY the
+    // NavigateToTop consumer; user actions must still reach the original callback.
+    val navigation = Fingerprint(definingClass="Lcom/x/models/timelines/", name="toString",
+        returnType=STR, strings=listOf("NavigateToTop")).requireSingle("server top instruction").originalClassDef.type
+    val consumer = Fingerprint(definingClass="Lcom/x/urt/instructions/", returnType=OBJ)
+        .scopedMatchAll().map { it.method }.filter { m -> m.instructions.any {
+            it.opcode==Opcode.INSTANCE_OF && it.getReference<TypeReference>()?.type==navigation
+        } }.unique("server top instruction consumer")
+    val branch = consumer.instructions.withIndex().filter {
+        it.value.opcode==Opcode.INSTANCE_OF && it.value.getReference<TypeReference>()?.type==navigation
+    }.unique("server top instruction branch").index
+    val shape = consumer.instructions.drop(branch).take(5)
+    if(shape.map { it.opcode } != listOf(Opcode.INSTANCE_OF,Opcode.IF_EQZ,Opcode.IGET_OBJECT,Opcode.INVOKE_VIRTUAL,Opcode.GOTO))
+        throw PatchException("List anchor: server navigation consumer control flow changed")
+    if((shape[0] as TwoRegisterInstruction).registerA!=(shape[1] as OneRegisterInstruction).registerA ||
+        (shape[1] as OffsetInstruction).codeOffset!=shape.drop(1).sumOf { it.codeUnits })
+        throw PatchException("List anchor: server navigation branch does not guard only its callback")
+    val serverCall=shape[3].getReference<MethodReference>()!!
+    if(serverCall.name!="invoke" || serverCall.parameterTypes.isNotEmpty() || serverCall.returnType!=OBJ)
+        throw PatchException("List anchor: server navigation callback contract changed")
+    val callback=context.mutableClassDefBy(serverCall.definingClass)
+    val targetField=callback.fields.filter { it.type==componentType }.unique("server callback component")
+    val original=callback.methods.filter { it.toString()==serverCall.toString() }.unique("server callback invoke")
+    if(original.calls().none { it.toString()==dispatcher.toString() })
+        throw PatchException("List anchor: navigation callback does not reach the verified jump dispatcher")
+    val unit=original.fields().filter { it.definingClass=="Lkotlin/Unit;" && it.type=="Lkotlin/Unit;" }.unique("callback Unit result")
+    val serverBridge=listBridge(callback.type,"pikoDispatchServerTop",emptyList(),OBJ,5,"""
+        iget-object v0, p0, $targetField
+        iget-object v0, v0, $repoField
+        invoke-interface {v0}, $timelineGet
+        move-result-object v1
+        invoke-interface {v0}, $identityGet
+        move-result-object v0
+        iget-object v0, v0, $identityField
+        invoke-static {v1, v0}, Lapp/morphe/extension/newx/timeline/ListReadingPosition;->active(Ljava/lang/Enum;$STR)Z
+        move-result v0
+        if-eqz v0, :native
+        sget-object v0, $unit
+        return-object v0
+        :native
+        invoke-virtual {p0}, $serverCall
+        move-result-object v0
+        return-object v0
+    """)
+    callback.methods.add(serverBridge)
+    val callRegs=shape[3] as FiveRegisterInstruction
+    val callbackReg=(shape[2] as TwoRegisterInstruction).registerA
+    if(callRegs.registerCount!=1 || callRegs.registerC!=callbackReg || shape[2].getReference<FieldReference>()?.type!=callback.type)
+        throw PatchException("List anchor: server callback receiver unproven")
+    consumer.replaceInstruction(branch+3,"invoke-virtual {v$callbackReg}, $serverBridge")
+
+    // Reuse the native Top-cursor lookup for opted-in List pull-to-refresh only.
+    // Do not change AUTO_REFRESH, server instructions, the DB merge, or inject old data.
+    val cursorResolver=component.methods.filter { m -> AccessFlags.STATIC.isSet(m.accessFlags) &&
+        m.parameterTypes.size==3 && m.parameterTypes[0].toString()==componentType &&
+        m.parameterTypes[1].toString().startsWith("Lcom/x/urt/refresh/") && m.returnType==OBJ &&
+        m.fields().any { it.name=="Top" && it.definingClass.startsWith("Lcom/x/models/timelines/") }
+    }.unique("native refresh cursor resolver")
+    val policyType=cursorResolver.parameterTypes[1].toString()
+    val topAt=cursorResolver.instructions.withIndex().filter {
+        it.value.opcode==Opcode.SGET_OBJECT && it.value.getReference<FieldReference>()?.name=="Top"
+    }.unique("Top cursor enum comparison").index
+    val topPolicyLoad=cursorResolver.instructions.take(topAt).withIndex().filter { item ->
+        val field=item.value.getReference<FieldReference>()
+        item.value.opcode==Opcode.SGET_OBJECT && field!=null &&
+            runCatching { context.mutableClassDefBy(field.type).interfaces.contains(policyType) }.getOrDefault(false)
+    }.lastOrNull() ?: throw PatchException("List anchor: Top cursor policy not found")
+    val topPolicy=topPolicyLoad.value.getReference<FieldReference>()!!
+    val policyBranch=cursorResolver.instructions.drop(topPolicyLoad.index).take(4)
+    if(policyBranch.map { it.opcode } != listOf(Opcode.SGET_OBJECT,Opcode.INVOKE_STATIC,Opcode.MOVE_RESULT,Opcode.IF_EQZ) ||
+        policyBranch[1].getReference<MethodReference>()?.toString()!=
+            "Lkotlin/jvm/internal/Intrinsics;->areEqual(Ljava/lang/Object;Ljava/lang/Object;)Z")
+        throw PatchException("List anchor: Top cursor policy selection is unproven")
+    val comparison=policyBranch[1] as FiveRegisterInstruction
+    val policyParameter=cursorResolver.implementation!!.registerCount-2
+    if(comparison.registerCount!=2 || setOf(comparison.registerC,comparison.registerD)!=
+        setOf(policyParameter,(policyBranch[0] as OneRegisterInstruction).registerA) ||
+        (policyBranch[2] as OneRegisterInstruction).registerA!=(policyBranch[3] as OneRegisterInstruction).registerA)
+        throw PatchException("List anchor: Top policy is not compared with the resolver input")
+    val cursorBridge=listBridge(componentType,"pikoListRefreshCursor",listOf(policyType),policyType,5,"""
+        iget-object v0, p0, $repoField
+        invoke-interface {v0}, $timelineGet
+        move-result-object v1
+        invoke-interface {v0}, $identityGet
+        move-result-object v0
+        iget-object v0, v0, $identityField
+        invoke-static {v1, v0}, Lapp/morphe/extension/newx/timeline/ListReadingPosition;->active(Ljava/lang/Enum;$STR)Z
+        move-result v0
+        if-eqz v0, :native
+        sget-object v0, $topPolicy
+        return-object v0
+        :native
+        return-object p1
+    """)
+    val refreshCandidates=dispatcher.calls().filter { it.name=="<init>" }.map { it.definingClass }.distinct()
+        .map { context.mutableClassDefBy(it) }.filter { it.superclass=="Lkotlin/coroutines/jvm/internal/SuspendLambda;" }
+        .flatMap { it.methods }.filter { m -> m.name=="invokeSuspend" &&
+            m.fields().any { it.name=="PULL_TO_REFRESH" } && m.calls().any { it.toString()==cursorResolver.toString() }
+        }
+    val manual=refreshCandidates.unique("pull refresh coroutine")
+    val pull=manual.instructions.withIndex().filter {
+        it.value.opcode==Opcode.SGET_OBJECT && it.value.getReference<FieldReference>()?.name=="PULL_TO_REFRESH"
+    }.unique("pull refresh request constant").index
+    val lookup=manual.instructions.withIndex().drop(pull).take(20).filter {
+        it.value.opcode==Opcode.INVOKE_STATIC && it.value.getReference<MethodReference>()?.toString()==cursorResolver.toString()
+    }.unique("pull refresh cursor callsite")
+    val lookupRegs=lookup.value as FiveRegisterInstruction
+    if(lookupRegs.registerCount!=3 || lookupRegs.registerC==lookupRegs.registerD)
+        throw PatchException("List anchor: pull refresh cursor registers changed")
+    component.methods.add(cursorBridge)
+    manual.addInstructions(lookup.index,"""
+        invoke-virtual {v${lookupRegs.registerC}, v${lookupRegs.registerD}}, $cursorBridge
+        move-result-object v${lookupRegs.registerD}
+    """.trimIndent())
+    println("List anchor: confirmed keys; server/user top separated; native Top cursor for List pull refresh; no data injection")
 }

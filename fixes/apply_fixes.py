@@ -80,7 +80,7 @@ def apply_fixes(source, check_only=False):
     return {
         # Retain the old report identifier for consumers of existing build reports.
         "experimental_fix": "per-list-reading-position-v1",
-        "position_strategy": "account-list-ui-key-v2",
+        "position_strategy": "account-list-confirmed-anchor-v3",
         "fix_files": [p.relative_to(source).as_posix() for p, _ in planned],
         "fix_resources": len(STRINGS),
         "runtime_tested": False,

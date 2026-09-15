@@ -18,7 +18,7 @@ class RuntimeTests(unittest.TestCase):
             'private static Object nativeLayout(Object lazy) { return null; }': 'private static Object nativeLayout(Object lazy) { return ((Fixture.Lazy)lazy).layout; }',
             'private static Object nativeMeasuredKey(Object lazy) { return null; }': 'private static Object nativeMeasuredKey(Object lazy) { return ((Fixture.Lazy)lazy).key; }',
             'private static int[] nativeSnapshot(Object lazy) { return null; }': 'private static int[] nativeSnapshot(Object lazy) { if(Fixture.building)throw new AssertionError("snapshot read during composition"); var s=(Fixture.Lazy)lazy; return new int[]{s.index,s.offset,s.moving?1:0}; }',
-            'private static void nativeRequest(Object lazy,int index,int offset) {}': 'private static void nativeRequest(Object lazy,int index,int offset) { var s=(Fixture.Lazy)lazy; s.requests++; s.index=index; s.offset=offset; s.key=s.keys[index]; s.layout=new Object(); }',
+            'private static void nativeRequest(Object lazy,int index,int offset) {}': 'private static void nativeRequest(Object lazy,int index,int offset) { var s=(Fixture.Lazy)lazy; s.requests++; if(s.ignoreRequest)return; s.index=index; s.offset=offset+s.offsetError; s.key=s.keys[index]; s.layout=new Object(); }',
             'private static int nativeCount(Object provider) { return 0; }': 'private static int nativeCount(Object provider) { if(Fixture.building)throw new AssertionError("provider traversal during composition"); return ((String[])provider).length; }',
             'private static Object nativeKeyAt(Object provider,int index) { return null; }': 'private static Object nativeKeyAt(Object provider,int index) { return ((String[])provider)[index]; }',
             'private static String nativeKey(Object key) { return null; }': 'private static String nativeKey(Object key) { return (String)key; }',
@@ -46,7 +46,7 @@ public class Fixture {
  enum Type { LIST_POSTS, FOLLOWING }
  static int checks;
  static boolean building;
- static class Lazy { Object layout=new Object(); String[] keys; String key; int index,offset,requests; boolean moving;
+ static class Lazy { Object layout=new Object(); String[] keys; String key; int index,offset,requests,offsetError; boolean moving,ignoreRequest;
    Lazy(String...keys){this.keys=keys;key=keys.length==0?null:keys[0];} }
  static void check(boolean v){if(!v)throw new AssertionError("runtime "+checks); checks++;}
  static void steps(int n){for(int i=0;i<n;i++)android.os.Handler.step();}
@@ -66,6 +66,15 @@ public class Fixture {
    loading.layout=new Object();steps(8);check(loading.requests==0);
    loading.keys=next;ListPositionRuntime.render(loading,next);loading.key="new";loading.layout=new Object();steps(8);
    check(loading.requests==1 && loading.index==3);ListPositionRuntime.pause(loading);
+   // Non-empty intermediate data also must retain the bookmark, without writing old posts back.
+   Lazy partial=new Lazy("intermediate");ListPositionRuntime.render(partial,partial.keys);ListPositionRuntime.bind(f,partial);
+   steps(20);check(partial.requests==0);
+   partial.keys=next;partial.key="new";ListPositionRuntime.render(partial,next);steps(8);
+   check(partial.requests==1 && partial.index==3 && partial.offset==60);ListPositionRuntime.pause(partial);
+   // Native key preservation already has the correct frame: do not request a redundant scroll.
+   Lazy nativeKept=new Lazy(next);nativeKept.index=3;nativeKept.key="b";nativeKept.offset=60;
+   ListPositionRuntime.render(nativeKept,next);ListPositionRuntime.bind(f,nativeKept);steps(8);
+   check(nativeKept.requests==0);ListPositionRuntime.pause(nativeKept);
    Lazy other=new Lazy(next);Object f2=flow(2,"list");ListPositionRuntime.bind(f2,other);ListPositionRuntime.render(other,other.keys);
    steps(8);check(other.requests==0);ListPositionRuntime.pause(other);
    String[] newer={"newer","b"};ListPositionRuntime.render(restart,newer);restart.keys=newer;restart.layout=new Object();
@@ -76,6 +85,36 @@ public class Fixture {
    ListPositionRuntime.top(f);ListPositionRuntime.pause(restart);
    Lazy top=new Lazy(next);ListPositionRuntime.bind(f,top);ListPositionRuntime.render(top,top.keys);steps(8);check(top.requests==0);
    ListPositionRuntime.pause(top);int r=top.requests;steps(20);check(top.requests==r);
+   // Leaving during an actual fling saves the coherent frame, not a previous idle frame.
+   Object flingFlow=flow(1,"fling");Lazy fling=new Lazy("a","b","c");
+   ListPositionRuntime.bind(flingFlow,fling);ListPositionRuntime.render(fling,fling.keys);steps(3);
+   ListPositionRuntime.interaction(fling);fling.index=2;fling.key="c";fling.offset=77;fling.moving=true;
+   ListPositionRuntime.pause(fling);
+   Lazy flingBack=new Lazy("a","b","c");ListPositionRuntime.bind(flingFlow,flingBack);ListPositionRuntime.render(flingBack,flingBack.keys);
+   steps(8);check(flingBack.index==2 && flingBack.offset==77);ListPositionRuntime.pause(flingBack);
+   // A top event before its scroll is measured must not immediately resave the old frame.
+   Object topFlow=flow(1,"top-race");Lazy topRace=new Lazy("a","b");
+   ListPositionRuntime.bind(topFlow,topRace);ListPositionRuntime.render(topRace,topRace.keys);steps(3);
+   topRace.index=1;topRace.key="b";topRace.offset=12;steps(12);
+   ListPositionRuntime.top(topFlow);ListPositionRuntime.pause(topRace);
+   Lazy topBack=new Lazy("a","b");ListPositionRuntime.bind(topFlow,topBack);ListPositionRuntime.render(topBack,topBack.keys);
+   steps(8);check(topBack.requests==0);ListPositionRuntime.pause(topBack);
+   // Same key but incorrect measured offset is NOT a successful restoration.
+   Object offsetFlow=flow(1,"offset");Lazy seed=new Lazy("a","b");
+   ListPositionRuntime.bind(offsetFlow,seed);ListPositionRuntime.render(seed,seed.keys);steps(3);
+   seed.index=1;seed.key="b";seed.offset=44;steps(12);ListPositionRuntime.pause(seed);
+   Lazy wrong=new Lazy("a","b");wrong.offsetError=-1;
+   ListPositionRuntime.bind(offsetFlow,wrong);ListPositionRuntime.render(wrong,wrong.keys);steps(30);
+   check(wrong.requests==1 && wrong.offset==43);steps(30);check(wrong.requests==1);
+   ListPositionRuntime.pause(wrong);
+   Lazy correct=new Lazy("a","b");ListPositionRuntime.bind(offsetFlow,correct);ListPositionRuntime.render(correct,correct.keys);
+   steps(8);check(correct.offset==44);ListPositionRuntime.pause(correct);
+   // A request awaiting layout cannot commit after a new provider generation.
+   Lazy race=new Lazy("a","b");race.ignoreRequest=true;
+   ListPositionRuntime.bind(offsetFlow,race);ListPositionRuntime.render(race,race.keys);steps(3);check(race.requests==1);
+   race.keys=new String[]{"new","a","b"};race.key="new";race.ignoreRequest=false;
+   ListPositionRuntime.render(race,race.keys);steps(8);check(race.index==2 && race.offset==44 && race.requests==2);
+   ListPositionRuntime.pause(race);
    check(!ListPositionRuntime.pack("r","a:b","c").equals(ListPositionRuntime.pack("r","a","b:c")));
    System.out.println("Runtime lifecycle/race checks passed: "+checks);
  } }''',

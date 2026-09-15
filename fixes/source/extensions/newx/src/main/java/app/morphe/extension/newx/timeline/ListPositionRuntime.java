@@ -24,9 +24,11 @@ public final class ListPositionRuntime {
         final String scope;
         final ListAnchorState state;
         WeakReference<Object> provider = new WeakReference<>(null);
-        long changedAt, lastWrite;
+        long lastWrite;
         String writtenKey;
         String awaitingKey;
+        long awaitingGeneration, blockedGeneration = -1, readyGeneration = -1;
+        boolean userTopPending;
         long requestedAt;
         int writtenOffset = -1;
         Session(String scope) { this.scope=scope; state=new ListAnchorState(load(scope)); }
@@ -48,7 +50,7 @@ public final class ListPositionRuntime {
             if(scope==null || lazy==null) return;
             Session old=ACTIVE.get(lazy);
             if(old!=null && old.scope.equals(scope)) return;
-            if(old!=null) persist(old,true);
+            if(old!=null) { observe(lazy,old); persist(old,true); }
             Session session=new Session(scope); ACTIVE.put(lazy,session);
             INTERACTIONS.put(nativeInteraction(lazy),new WeakReference<>(lazy));
             WeakReference<Object> ref=PROVIDERS.get(lazy);
@@ -60,6 +62,7 @@ public final class ListPositionRuntime {
         if(Looper.myLooper()!=Looper.getMainLooper()) return;
         Session session=ACTIVE.remove(lazy);
         if(session!=null) {
+            // Capture a coherent measured frame even when leaving during a fling.
             observe(lazy,session); persist(session,true);
             INTERACTIONS.remove(nativeInteraction(lazy)); trace("pause",session);
         }
@@ -82,23 +85,28 @@ public final class ListPositionRuntime {
             for(int i=0;i<count;i++) keys[i]=nativeKey(nativeKeyAt(provider,i));
             session.provider=new WeakReference<>(provider);
             if(session.state.entries(keys)) {
-                session.changedAt=SystemClock.uptimeMillis(); trace("data",session);
+                session.readyGeneration=-1; trace("data",session);
             }
             schedule();
-        } catch(RuntimeException error) { session.state.cancel(); }
+        } catch(RuntimeException error) { trace("provider-unavailable",session); }
     }
     public static void interaction(Object source) {
         if(Looper.myLooper()!=Looper.getMainLooper()) return;
         WeakReference<Object> ref=INTERACTIONS.get(source);
         Session session=ref==null?null:ACTIVE.get(ref.get());
-        if(session!=null) { session.state.cancel(); session.awaitingKey=null; trace("gesture-cancel",session); }
+        if(session!=null) {
+            session.state.cancel(); session.awaitingKey=null; session.userTopPending=false;
+            trace("gesture-cancel",session);
+        }
     }
     public static void top(Object flow) {
         if(Looper.myLooper()!=Looper.getMainLooper()) return;
         String scope; synchronized(SCOPES) { scope=SCOPES.get(flow); }
         if(scope==null) return;
         for(Session session:new ArrayList<>(ACTIVE.values())) if(scope.equals(session.scope)) {
-            session.state.cancel(); session.awaitingKey=null; trace("top-cancel",session);
+            session.state.clear(); session.awaitingKey=null;
+            session.userTopPending=true;
+            session.writtenKey=null; session.writtenOffset=-1; trace("user-top",session);
         }
         try { SharedPreferences p=preferences(); if(p!=null) p.edit().remove(scope+".key").remove(scope+".offset").apply(); }
         catch(RuntimeException ignored) {}
@@ -115,37 +123,74 @@ public final class ListPositionRuntime {
             try {
                 WeakReference<Object> ref=PROVIDERS.get(lazy);
                 Object provider=ref==null?null:ref.get();
-                if(provider!=null) publish(lazy,provider);
                 int[] snapshot=nativeSnapshot(lazy);
-                if(snapshot==null || snapshot[2]!=0 || session.provider.get()==null) continue;
+                if(snapshot==null) continue;
+                // A real ongoing scroll wins over automatic restoration. Recording
+                // its coherent frame is allowed; a fling must not erase the bookmark.
+                if(snapshot[2]!=0) { session.state.cancel(); session.awaitingKey=null; }
+                if(provider!=null) publish(lazy,provider);
+                if(session.provider.get()==null) continue;
+                if(snapshot[2]!=0) {
+                    session.state.cancel(); observe(lazy,session); persist(session,false); continue;
+                }
+                long generation=session.state.generation();
+                if(!coherent(lazy,session,snapshot)) continue;
+                if(session.userTopPending) {
+                    if(snapshot[0]!=0 || snapshot[1]!=0) continue;
+                    session.userTopPending=false;
+                }
+                if(session.awaitingKey!=null && session.awaitingGeneration!=generation) session.awaitingKey=null;
                 if(session.awaitingKey!=null) {
-                    if(session.awaitingKey.equals(nativeKey(nativeMeasuredKey(lazy)))) session.awaitingKey=null;
+                    if(session.state.confirm(generation,nativeKey(nativeMeasuredKey(lazy)),snapshot[0],snapshot[1])) {
+                        session.awaitingKey=null; trace("confirmed",session);
+                    }
                     else if(SystemClock.uptimeMillis()-session.requestedAt<1000) continue;
-                    else { session.awaitingKey=null; session.state.cancel(); }
+                    else {
+                        // A timeout is not evidence that the old bookmark is invalid.
+                        // Retry only on a new data generation, never in a scroll loop.
+                        session.awaitingKey=null; session.blockedGeneration=generation; trace("unconfirmed",session);
+                    }
                 }
                 if(session.state.pending()) {
-                    if(!session.state.hasItems() || nativeMeasuredKey(lazy)==null) continue;
-                    if(SystemClock.uptimeMillis()-session.changedAt<240) continue;
-                    int[] target=session.state.resolve(session.state.generation());
+                    if(!session.state.hasItems() || session.blockedGeneration==generation) continue;
+                    // Two coherent observations, not an arbitrary refresh delay.
+                    if(session.readyGeneration!=generation) { session.readyGeneration=generation; continue; }
+                    int[] target=session.state.resolve(generation);
                     if(target!=null) {
-                        session.awaitingKey=session.state.current().key;
+                        if(session.state.confirm(generation,nativeKey(nativeMeasuredKey(lazy)),snapshot[0],snapshot[1])) {
+                            persist(session,false); continue; // Native key preservation already did the work.
+                        }
+                        session.awaitingKey=session.state.keyAt(target[0]);
+                        session.awaitingGeneration=generation;
                         session.requestedAt=SystemClock.uptimeMillis();
                         nativeRequest(lazy,target[0],target[1]); trace("restore",session); continue;
                     }
-                    trace("missing",session);
+                    if(session.readyGeneration==generation) {
+                        trace("missing-retained",session); session.blockedGeneration=generation;
+                    }
+                    continue; // Do not replace a missing bookmark with the new head.
                 }
                 observe(lazy,session); persist(session,false);
-            } catch(RuntimeException error) { session.state.cancel(); }
+            } catch(RuntimeException error) {
+                session.awaitingKey=null; session.blockedGeneration=session.state.generation();
+                trace("deferred-error",session);
+            }
         }
         schedule();
     }
     private static void observe(Object lazy,Session session) {
-        if(session.provider.get()==null || session.state.pending() || session.awaitingKey!=null) return;
+        if(session.provider.get()==null || session.state.pending() || session.awaitingKey!=null || session.userTopPending) return;
         try {
             int[] snapshot=nativeSnapshot(lazy);
-            if(snapshot!=null && snapshot[2]==0)
+            if(snapshot!=null && coherent(lazy,session,snapshot))
                 session.state.observe(nativeKey(nativeMeasuredKey(lazy)),snapshot[0],snapshot[1]);
         } catch(RuntimeException ignored) {}
+    }
+    private static boolean coherent(Object lazy,Session session,int[] snapshot) {
+        Object provider=session.provider.get();
+        if(provider==null || snapshot[0]<0 || snapshot[0]>=nativeCount(provider)) return false;
+        Object measured=nativeMeasuredKey(lazy);
+        return measured!=null && measured.equals(nativeKeyAt(provider,snapshot[0]));
     }
     private static ListAnchorState.Anchor load(String scope) {
         try {
@@ -156,7 +201,8 @@ public final class ListPositionRuntime {
     }
     private static void persist(Session session,boolean force) {
         ListAnchorState.Anchor a=session.state.current();
-        if(a==null || session.state.pending() || (a.key.equals(session.writtenKey) && a.offset==session.writtenOffset)) return;
+        if(a==null || session.state.pending() || session.awaitingKey!=null ||
+            (a.key.equals(session.writtenKey) && a.offset==session.writtenOffset)) return;
         long now=SystemClock.uptimeMillis(); if(!force && now-session.lastWrite<700) return;
         try {
             SharedPreferences p=preferences(); if(p==null) return;
