@@ -18,7 +18,7 @@ class RuntimeTests(unittest.TestCase):
             'private static Object nativeLayout(Object lazy) { return null; }': 'private static Object nativeLayout(Object lazy) { return ((Fixture.Lazy)lazy).layout; }',
             'private static Object nativeMeasuredKey(Object lazy) { return null; }': 'private static Object nativeMeasuredKey(Object lazy) { return ((Fixture.Lazy)lazy).key; }',
             'private static int[] nativeSnapshot(Object lazy) { return null; }': 'private static int[] nativeSnapshot(Object lazy) { if(Fixture.building)throw new AssertionError("snapshot read during composition"); var s=(Fixture.Lazy)lazy; return new int[]{s.index,s.offset,s.moving?1:0}; }',
-            'private static void nativeRequest(Object lazy,int index,int offset) {}': 'private static void nativeRequest(Object lazy,int index,int offset) { var s=(Fixture.Lazy)lazy; s.requests++; if(s.ignoreRequest)return; s.index=index; s.offset=offset+s.offsetError; s.key=s.keys[index]; s.layout=new Object(); }',
+            'private static void nativeRequest(Object lazy,int index,int offset) {}': 'private static void nativeRequest(Object lazy,int index,int offset) { var s=(Fixture.Lazy)lazy; s.requests++; s.requestedIndex=index; s.requestedOffset=offset; if(s.ignoreRequest)return; s.index=index; s.offset=offset+s.offsetError; s.key=s.keys[index]; s.layout=new Object(); }',
             'private static int nativeCount(Object provider) { return 0; }': 'private static int nativeCount(Object provider) { if(Fixture.building)throw new AssertionError("provider traversal during composition"); return ((String[])provider).length; }',
             'private static Object nativeKeyAt(Object provider,int index) { return null; }': 'private static Object nativeKeyAt(Object provider,int index) { return ((String[])provider)[index]; }',
             'private static String nativeKey(Object key) { return null; }': 'private static String nativeKey(Object key) { return (String)key; }',
@@ -46,7 +46,7 @@ public class Fixture {
  enum Type { LIST_POSTS, FOLLOWING }
  static int checks;
  static boolean building;
- static class Lazy { Object layout=new Object(); String[] keys; String key; int index,offset,requests,offsetError; boolean moving,ignoreRequest;
+ static class Lazy { Object layout=new Object(); String[] keys; String key; int index,offset,requests,offsetError,requestedIndex,requestedOffset; boolean moving,ignoreRequest;
    Lazy(String...keys){this.keys=keys;key=keys.length==0?null:keys[0];} }
  static void check(boolean v){if(!v)throw new AssertionError("runtime "+checks); checks++;}
  static void steps(int n){for(int i=0;i<n;i++)android.os.Handler.step();}
@@ -112,6 +112,7 @@ public class Fixture {
    // A request awaiting layout cannot commit after a new provider generation.
    Lazy race=new Lazy("a","b");race.ignoreRequest=true;
    ListPositionRuntime.bind(offsetFlow,race);ListPositionRuntime.render(race,race.keys);steps(3);check(race.requests==1);
+   check(race.requestedIndex==1 && race.requestedOffset==44 && race.index==0 && race.offset==0);
    race.keys=new String[]{"new","a","b"};race.key="new";race.ignoreRequest=false;
    ListPositionRuntime.render(race,race.keys);steps(8);check(race.index==2 && race.offset==44 && race.requests==2);
    ListPositionRuntime.pause(race);

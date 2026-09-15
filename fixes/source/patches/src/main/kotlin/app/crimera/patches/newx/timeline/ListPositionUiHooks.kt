@@ -167,28 +167,59 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
     val ints = disposal.fields().filter { it.definingClass==positionField.type }
     if(ints.size!=2 || ints[0].type!=ints[1].type) throw PatchException("List anchor: first-index/offset access changed")
     val readInt = disposal.calls().filter { it.definingClass==ints[0].type && it.returnType=="I" && it.parameterTypes.isEmpty() }.distinctBy { it.toString() }.unique("snapshot integer reader")
+    // The mutable scroll position can contain a requested offset before measuring.
+    // Read the actual measure result instead. Prove its offset by tracing the value
+    // consumed by the native measured-result -> scroll-position offset setter.
+    val applyMeasure=lazy.methods.filter { m -> m.parameterTypes.map(CharSequence::toString)==listOf(layout.type,"Z","Z") &&
+        m.returnType=="V" && m.fields().any { it.toString()==ints[1].toString() }
+    }.unique("native measure result consumer")
+    val offsetStore=applyMeasure.instructions.withIndex().filter { item ->
+        val next=applyMeasure.instructions.getOrNull(item.index+1)
+        val call=next?.getReference<MethodReference>()
+        item.value.opcode==Opcode.IGET_OBJECT && item.value.getReference<FieldReference>()?.toString()==ints[1].toString() &&
+            next?.opcode==Opcode.INVOKE_VIRTUAL && call?.definingClass==readInt.definingClass &&
+            call.parameterTypes.map(CharSequence::toString)==listOf("I") && call.returnType=="V"
+    }.unique("measured offset setter")
+    val offsetArgs=applyMeasure.instructions[offsetStore.index+1] as FiveRegisterInstruction
+    if(offsetArgs.registerCount!=2 || offsetArgs.registerC!=(offsetStore.value as TwoRegisterInstruction).registerA)
+        throw PatchException("List anchor: measured offset setter receiver changed")
+    val offsetInput=applyMeasure.instructions.take(offsetStore.index).withIndex().filter { item ->
+        item.value.opcode==Opcode.IGET && (item.value as TwoRegisterInstruction).registerA==offsetArgs.registerD &&
+            item.value.getReference<FieldReference>()?.definingClass==layout.type && item.value.getReference<FieldReference>()?.type=="I"
+    }.unique("measured offset value producer")
+    if(applyMeasure.instructions.subList(offsetInput.index+1,offsetStore.index+1).any { i ->
+        i.opcode.setsRegister() && i is OneRegisterInstruction &&
+            (i.registerA==offsetArgs.registerD || (i.opcode.setsWideRegister() && i.registerA+1==offsetArgs.registerD))
+    }) throw PatchException("List anchor: measured offset value is overwritten before consumption")
+    val measuredOffset=offsetInput.value.getReference<FieldReference>()!!
+    val measuredIndex=context.mutableClassDefBy(first.type).methods.filter {
+        it.name=="getIndex" && it.parameterTypes.isEmpty() && it.returnType=="I"
+    }.unique("measured first item index")
     val rawDelta = lazy.methods.filter { it.parameterTypes.map(CharSequence::toString)==listOf("F") && it.returnType=="F" }.unique("scrollable delegate")
     val gestureOwner = rawDelta.calls().unique("scroll delegate call").definingClass
     val scrolling = lazy.methods.filter { it.returnType=="Z" && it.parameterTypes.isEmpty() && it.calls().any { r -> r.definingClass==gestureOwner } }.unique("scroll in progress")
     adapter("nativeSnapshot",6,"""
         check-cast p0, ${lazy.type}
+        invoke-virtual {p0}, $layoutGet
+        move-result-object v1
+        iget-object v2, v1, $first
+        if-eqz v2, :empty
         const/4 v0, 0x3
         new-array v0, v0, [I
-        iget-object v1, p0, $positionField
-        iget-object v2, v1, ${ints[0]}
-        invoke-virtual {v2}, $readInt
+        invoke-virtual {v2}, $measuredIndex
         move-result v2
         const/4 v3, 0x0
         aput v2, v0, v3
-        iget-object v1, v1, ${ints[1]}
-        invoke-virtual {v1}, $readInt
-        move-result v1
+        iget v1, v1, $measuredOffset
         const/4 v3, 0x1
         aput v1, v0, v3
         invoke-virtual {p0}, $scrolling
         move-result v1
         const/4 v3, 0x2
         aput v1, v0, v3
+        return-object v0
+        :empty
+        const/4 v0, 0x0
         return-object v0
     """)
     val request = lazy.methods.filter { it.parameterTypes.map(CharSequence::toString)==listOf("I","I") && it.returnType=="V" && it.name!="<init>" }.unique("requestScrollToItem")

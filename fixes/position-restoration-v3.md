@@ -20,6 +20,7 @@
 - last confirmed bookmark 与 pending restore 分离；取消自动移动不删除最后书签。
 - 中间批次缺少目标时保留 pending，不用新头部覆盖书签；后续批次重试。用户实际浏览后可建立新书签，不自动请求历史分页。
 - resolve 不代表完成。确认要求同一 generation 的 measured key、index、offset 都与目标一致；确认前不保存请求目标。
+- index/offset 直接读取实际 MeasureResult，不读取可能提前写入请求值的 LazyListScrollPosition。测量偏移字段由原生 applyMeasureResult 向 offset setter 的数据流验证，确认期间未被覆写；字段布局不符则拒绝打补丁。
 - 原生已保持同帖同偏移时直接确认，不发冗余滚动请求。
 - provider 回调只存弱引用并排队，禁止在 Compose provider 构建期间读取 snapshot、遍历 key 或滚动，保留 ANR 后的安全约束。
 - 独立观察要求 measured key 与 provider 当前 index 的原始 key 一致；两个同代次一致观察后请求。80ms 仅为调度节流，不是网络完成信号。
