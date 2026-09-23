@@ -517,8 +517,17 @@ val mediaHistoryPatch = bytecodePatch(
             """)
         }
         // No repository/cursor mutation: observe only detail presentation and viewer page events.
-        val detailGetter = detail.methods.filter { it.name == "getState" && it.parameterTypes.isEmpty() }.one("detail state getter")
-        detailGetter.addInstructions(0, "invoke-static/range {p0 .. p0}, $RUNTIME->bindPost($OBJ)V")
+        val detailGetter = detail.methods.singleOrNull { it.name == "getState" && it.parameterTypes.isEmpty() }
+        if (detailGetter != null) {
+            detailGetter.addInstructions(0, "invoke-static/range {p0 .. p0}, $RUNTIME->bindPost($OBJ)V")
+        } else {
+            // The 12.28 state accessor is R8-renamed. Register after construction;
+            // the runtime defers inspection until the detail view is foreground.
+            val detailConstructor = detail.methods.filter { it.name == "<init>" }.one("detail constructor")
+            val detailReady = detailConstructor.instructions.withIndex().filter { it.value.opcode == Opcode.RETURN_VOID }
+                .one("completed detail construction").index
+            detailConstructor.addInstructions(detailReady, "invoke-static/range {p0 .. p0}, $RUNTIME->bindPost($OBJ)V")
+        }
         dispatcher.addInstructions(0, "invoke-static/range {p0 .. p1}, $RUNTIME->videoEvent($OBJ$OBJ)V")
         println("Media history: verified foreground detail/gallery/video observers; repository, playback and pagination unchanged")
     }

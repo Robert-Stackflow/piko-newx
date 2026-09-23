@@ -131,7 +131,10 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
     }.unique("final item key lookup")
     adapter("nativeCount",2,"check-cast p0, $scopeType\niget-object v0, p0, $intervals\niget v0, v0, $count\nreturn v0")
     adapter("nativeKeyAt",3,"check-cast p0, $scopeType\ninvoke-virtual {p0, p1}, $keyGet\nmove-result-object v0\nreturn-object v0")
-    val renderReturn = renderer.instructions.withIndex().filter { it.value.opcode==Opcode.RETURN_OBJECT }.unique("builder return")
+    val renderReturn = renderer.instructions.withIndex().filter { item ->
+        item.value.opcode==Opcode.RETURN_OBJECT && item.index>0 &&
+            renderer.instructions[item.index-1].getReference<FieldReference>()?.definingClass=="Lkotlin/Unit;"
+    }.unique("builder Unit return")
     // Insert before the terminal Unit load so the return register is preserved across R8 layouts.
     val previous = renderer.instructions[renderReturn.index-1].getReference<FieldReference>()
     if(previous?.definingClass!="Lkotlin/Unit;" ||
