@@ -249,8 +249,9 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
     }.unique("regular key identity constructor")
     val sortWrite = keyCtor.instructions.filter { it.opcode==Opcode.IPUT_WIDE }.unique("sort identity write")
     val regularSort = sortWrite.getReference<FieldReference>()!!
-    if(keyCtor.implementation!!.registerCount!=5 || (sortWrite as TwoRegisterInstruction).registerA!=3 ||
-        sortWrite.registerB!=1 || regular.method.fields().none { it.toString()==regularSort.toString() })
+    val constructorStart = keyCtor.implementation!!.registerCount - 4 // this, String, wide sort index
+    if(constructorStart < 0 || (sortWrite as TwoRegisterInstruction).registerA!=constructorStart+2 ||
+        sortWrite.registerB!=constructorStart || regular.method.fields().none { it.toString()==regularSort.toString() })
         throw PatchException("List anchor: constructor sort identity mapping is unproven")
     // Unknown key variants (headers/loading/modules) are not persisted in this first implementation.
     // RegularItem is also used for each vertically expanded module item, preserving exact UI indices.
