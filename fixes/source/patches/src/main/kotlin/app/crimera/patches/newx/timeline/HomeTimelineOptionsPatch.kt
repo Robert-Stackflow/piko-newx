@@ -31,7 +31,7 @@ private const val HO_OBJECT = "Ljava/lang/Object;"
 private const val HO_STRING = "Ljava/lang/String;"
 private val HOME_OPTIONS_COMPATIBILITY = Compatibility(name = "NewX", packageName = "com.twitter.android",
     apkFileType = ApkFileType.APKM, appIconColor = 0x000000,
-    targets = listOf(AppTarget(version = "12.22.0-prod.01")))
+    targets = listOf(AppTarget(version = "12.22.0-prod.01"), AppTarget(version = "12.28.0-prod.01")))
 
 @Suppress("unused")
 val homeTimelineRepostsPatch = bytecodePatch(

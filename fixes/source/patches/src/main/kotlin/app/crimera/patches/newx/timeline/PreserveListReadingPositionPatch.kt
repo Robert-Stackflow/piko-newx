@@ -52,7 +52,7 @@ val preserveListReadingPositionPatch = bytecodePatch(
 ) {
     compatibleWith(Compatibility(name = "NewX", packageName = "com.twitter.android",
         apkFileType = ApkFileType.APKM, appIconColor = 0x000000,
-        targets = listOf(AppTarget(version = "12.22.0-prod.01"))))
+        targets = listOf(AppTarget(version = "12.22.0-prod.01"), AppTarget(version = "12.28.0-prod.01"))))
     dependsOn(restoreTimelinePositionPatch)
     newXToggle(id = "newx.timeline.list_reading_position", category = Categories.TIMELINE,
         strings = settingStrings("piko_newx_list_reading_position"), order = 155,
