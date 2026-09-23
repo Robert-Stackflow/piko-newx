@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import zipfile
+import sys
 from pathlib import Path
 
 from build_piko import pre_build_cleanup, set_project_version
@@ -19,27 +20,36 @@ ROOT = Path(__file__).resolve().parent
 def main():
     config = json.loads((ROOT / "localization/source.json").read_text(encoding="utf-8"))
     source = ROOT / ".localized-source"
-    if source.exists():
-        raise FileExistsError(".localized-source already exists; use a fresh checkout for a build")
-    subprocess.run(["git", "init", str(source)], check=True)
-    subprocess.run(["git", "remote", "add", "origin",
-                    f"https://github.com/{config['repository']}.git"], cwd=source, check=True)
-    subprocess.run(["git", "fetch", "--depth=1", "origin", config["commit"]], cwd=source, check=True)
-    subprocess.run(["git", "checkout", "--detach", "FETCH_HEAD"], cwd=source, check=True)
-    test_env = {**os.environ, "PIKO_TEST_SOURCE": str(source)}
-    subprocess.run([os.sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
-                   cwd=ROOT, env=test_env, check=True)
-    report = apply(source)
-    report.update(apply_fixes(source))
-    report["translated_resources"] += report["fix_resources"]
-    if config.get("media_tools_preview", False):
-        report.update(apply_features(source))
-        report["translated_resources"] += report["feature_resources"]
-    print(json.dumps(report, indent=2), flush=True)
-    # Cleanup is confined to the new generated source checkout above.
-    pre_build_cleanup(source)
-    set_project_version(source, config["version"])
-    gradlew = "gradlew.bat" if os.name == "nt" else "./gradlew"
+    resume = sys.argv[1:] == ["--resume"]
+    if resume:
+        if not source.is_dir() or subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=source, text=True).strip() != config["commit"]:
+            raise ValueError("Cannot resume an unrecognized source checkout")
+        if f"version = {config['version']}" not in (source / "gradle.properties").read_text(encoding="utf-8"):
+            raise ValueError("Cannot resume a different build version")
+        report = json.loads((ROOT / "bins/build-report-pending.json").read_text(encoding="utf-8"))
+    else:
+        if source.exists():
+            raise FileExistsError(".localized-source already exists; use a fresh checkout for a build")
+        subprocess.run(["git", "init", str(source)], check=True)
+        subprocess.run(["git", "remote", "add", "origin",
+                        f"https://github.com/{config['repository']}.git"], cwd=source, check=True)
+        subprocess.run(["git", "fetch", "--depth=1", "origin", config["commit"]], cwd=source, check=True)
+        subprocess.run(["git", "checkout", "--detach", "FETCH_HEAD"], cwd=source, check=True)
+        test_env = {**os.environ, "PIKO_TEST_SOURCE": str(source)}
+        subprocess.run([os.sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
+                       cwd=ROOT, env=test_env, check=True)
+        report = apply(source)
+        report.update(apply_fixes(source))
+        report["translated_resources"] += report["fix_resources"]
+        if config.get("media_tools_preview", False):
+            report.update(apply_features(source))
+            report["translated_resources"] += report["feature_resources"]
+        print(json.dumps(report, indent=2), flush=True)
+        # Cleanup is confined to the new generated source checkout above.
+        pre_build_cleanup(source)
+        set_project_version(source, config["version"])
+        (ROOT / "bins/build-report-pending.json").write_text(json.dumps(report), encoding="utf-8")
+    gradlew = str(source / "gradlew.bat") if os.name == "nt" else "./gradlew"
     subprocess.run([gradlew, "buildAndroid", "--no-daemon", "--max-workers=2",
                     "-Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8"], cwd=source, check=True)
     output = ROOT / "bins"
@@ -73,6 +83,7 @@ def main():
     report["mpp_sha256"] = hashlib.sha256(artifact.read_bytes()).hexdigest()
     (output / "localization-report.json").write_text(
         json.dumps({**config, **report}, ensure_ascii=False, indent=2), encoding="utf-8")
+    (output / "build-report-pending.json").unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

@@ -59,5 +59,9 @@
   "post_fully_visible": ["Make the entire post visible before sharing", "请先让整条帖子显示在屏幕上，再进行分享"],
   "post_too_large": ["Rendered post is too large to capture", "帖子显示尺寸过大，无法截取"],
   "allocate_image_failed": ["Could not allocate the post image", "无法为帖子图片分配内存"],
-  "save_post_failed": ["Could not save the post image", "无法保存帖子图片"]
+  "save_post_failed": ["Could not save the post image", "无法保存帖子图片"],
+  "already_downloaded": ["Already downloaded", "已下载"],
+  "set_download_folder": ["Set a download folder in Download options", "请在下载选项中设置保存文件夹"],
+  "could_not_save": ["Could not save %1$s", "无法保存 %1$s"],
+  "media_already_downloaded": ["%1$d media already downloaded", "%1$d 项媒体已下载"]
 }

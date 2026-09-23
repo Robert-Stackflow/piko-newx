@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import app.morphe.extension.newx.misc.InlineDownloadButton;
 import app.morphe.extension.newx.settings.NewXCustomScreenFragment;
 import app.morphe.extension.newx.settings.NewXSettingsUi;
 import app.morphe.extension.newx.settings.NewXSettingsActivity;
@@ -189,7 +188,7 @@ public final class DownloadsFragment extends NewXCustomScreenFragment {
                 && !retrying.contains(task.id())) {
             labels.add(text("download_retry")); actions.add(() -> {
                 if (!retrying.add(task.id())) return;
-                InlineDownloadButton.retryManagedDownload(getActivity(), task.id(), task.url(), task.file(),
+                DownloadTaskStore.retryTask(getActivity(), task.id(), task.url(), task.file(),
                         task.mime(), task.post(), task.author(), success -> main.post(() -> {
                             retrying.remove(task.id());
                             if (!resumed) return;

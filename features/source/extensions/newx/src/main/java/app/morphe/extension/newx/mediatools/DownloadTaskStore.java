@@ -8,14 +8,19 @@ import android.database.sqlite.SQLiteDatabase;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
+import app.morphe.extension.newx.misc.DownloadDestination;
 import app.morphe.extension.shared.Utils;
 
 /** Only explicitly tracked Piko downloads; never enumerate unrelated system downloads. */
 public final class DownloadTaskStore {
     private static final ExecutorService IO = Executors.newSingleThreadExecutor();
+    private static final ExecutorService RETRIES = Executors.newSingleThreadExecutor();
+    private static final Set<Long> ACTIVE_SAF = ConcurrentHashMap.newKeySet();
     private static SQLiteDatabase database;
     public record Task(long id, String url, String file, String mime, String post,
                        String author, String state, String reason, String uri,
@@ -42,6 +47,14 @@ public final class DownloadTaskStore {
     public static void queued(Context context, long id, String url, String file, String mime,
                               String post, String author) {
         insert(context, id, url, file, mime, post, author, "queued", "");
+    }
+
+    public static long queuedSaf(Context context, String url, String file, String mime,
+                                 String post, String author) {
+        long id = -android.os.SystemClock.elapsedRealtimeNanos();
+        ACTIVE_SAF.add(id);
+        queued(context, id, url, file, mime, post, author);
+        return id;
     }
 
     public static void enqueueFailed(Context context, String url, String file, String mime,
@@ -71,6 +84,7 @@ public final class DownloadTaskStore {
     }
 
     public static void published(Context context, long id, String uri) {
+        ACTIVE_SAF.remove(id);
         update(context, id, "complete", "", uri);
     }
 
@@ -80,6 +94,7 @@ public final class DownloadTaskStore {
     }
 
     public static void failed(Context context, long id, String reason) {
+        ACTIVE_SAF.remove(id);
         update(context, id, "failed", reason, null);
     }
 
@@ -112,6 +127,10 @@ public final class DownloadTaskStore {
                         String state = value(c, "state");
                         String reason = value(c, "reason");
                         long bytes = 0, total = -1;
+                        if (id < 0 && state.equals("queued") && !ACTIVE_SAF.contains(id)) {
+                            state = "missing";
+                            reason = "transfer_interrupted";
+                        }
                         if (id > 0 && !state.equals("complete") && !state.equals("failed") && !state.equals("retried") && manager != null) {
                             try (Cursor download = manager.query(new DownloadManager.Query().setFilterById(id))) {
                                 if (download != null && download.moveToFirst()) {
@@ -155,6 +174,36 @@ public final class DownloadTaskStore {
             try { database(Utils.getContext()).delete("tasks", "state='complete'", null); }
             catch (RuntimeException ignored) { success = false; }
             if (done != null) done.accept(success);
+        });
+    }
+
+    public static void retryTask(Context context, long oldId, String url, String file,
+                                 String mime, String post, String author, Consumer<Boolean> done) {
+        Context app = context.getApplicationContext();
+        RETRIES.execute(() -> {
+            boolean success = false;
+            try {
+                if (url != null && (url.startsWith("https://") || url.startsWith("http://"))) {
+                    DownloadDestination.MediaKind kind = DownloadDestination.mediaKindFor(mime);
+                    DownloadDestination.Target target = DownloadDestination.reserve(
+                            app, kind, file, mime, DownloadDestination.conflictPolicy());
+                    if (target != null) {
+                        long id = queuedSaf(app, url, target.fileName(), mime, post, author);
+                        try {
+                            success = DownloadDestination.save(app, target, url, 0);
+                        } catch (RuntimeException exception) {
+                            DownloadDestination.discard(app, target);
+                        }
+                        if (success) {
+                            published(app, id, target.documentUri().toString());
+                            retried(app, oldId);
+                        } else failed(app, id, "transfer");
+                    }
+                }
+            } catch (Exception ignored) {
+            } finally {
+                if (done != null) done.accept(success);
+            }
         });
     }
 

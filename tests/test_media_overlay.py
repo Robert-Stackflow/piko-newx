@@ -54,7 +54,7 @@ class MediaOverlayTests(unittest.TestCase):
                 report = media.apply_features(fixture)
                 self.assertEqual(set(report["feature_files"]), media.MANIFEST)
                 for relative in media.EDITS:
-                    expected = ("retryManagedDownload(" if relative.endswith("InlineDownloadButton.java")
+                    expected = ("DownloadTaskStore.queuedSaf(" if relative.endswith("InlineDownloadButton.java")
                                 else "HeaderToolsRuntime.initialScreen(getIntent())" if relative.endswith("NewXSettingsActivity.java")
                                 else "invalidatePending()")
                     self.assertTrue(expected in (fixture / relative).read_text(), relative)
