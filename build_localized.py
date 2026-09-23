@@ -48,6 +48,7 @@ def main():
         # Cleanup is confined to the new generated source checkout above.
         pre_build_cleanup(source)
         set_project_version(source, config["version"])
+        (ROOT / "bins").mkdir(exist_ok=True)
         (ROOT / "bins/build-report-pending.json").write_text(json.dumps(report), encoding="utf-8")
     gradlew = str(source / "gradlew.bat") if os.name == "nt" else "./gradlew"
     subprocess.run([gradlew, "buildAndroid", "--no-daemon", "--max-workers=2",
