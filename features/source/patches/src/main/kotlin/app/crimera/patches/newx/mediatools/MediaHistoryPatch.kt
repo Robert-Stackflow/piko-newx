@@ -418,16 +418,20 @@ val mediaHistoryPatch = bytecodePatch(
         val playback = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString",
             strings = listOf("ImmersivePlaybackState(progress=", ", isSeekable=")).requireSingle("viewer playback state").originalClassDef
         val playbackConstructor = mutableClassDefBy(playback.type).methods.filter {
-            it.name == "<init>" && it.parameterTypes.map(CharSequence::toString) == listOf("F", "J", "J", "Z", "Z", "F")
+            it.name == "<init>" && it.parameterTypes.map(CharSequence::toString) in listOf(
+                listOf("F", "J", "J", "Z", "Z", "F"),
+                listOf("F", "J", "J", STR, "Z", "Z", "F")
+            )
         }.one("playback state constructor")
-        val parameterStart = playbackConstructor.implementation!!.registerCount - 9
+        val hasPlaybackLabel = playbackConstructor.parameterTypes.size == 7
+        val parameterStart = playbackConstructor.implementation!!.registerCount - if (hasPlaybackLabel) 10 else 9
         fun stateField(offset: Int, type: String): FieldReference = playbackConstructor.instructions.filter { op ->
             op is TwoRegisterInstruction && op.opcode in listOf(Opcode.IPUT_WIDE, Opcode.IPUT_BOOLEAN) &&
                 op.registerA == parameterStart + offset && op.registerB == parameterStart
         }.mapNotNull { it.getReference<FieldReference>() }.filter { it.type == type }.one("playback parameter $offset")
         val positionField = stateField(2, "J")
         val durationField = stateField(4, "J")
-        val seekableField = stateField(7, "Z")
+        val seekableField = stateField(if (hasPlaybackLabel) 8 else 7, "Z")
         listOf(positionField, durationField, seekableField).forEach(::expose)
         val stateFlows = dispatcher.instructions.withIndex().mapNotNull { (index, op) ->
             if (op.opcode != Opcode.CHECK_CAST || op.getReference<com.android.tools.smali.dexlib2.iface.reference.TypeReference>()?.type != playback.type) return@mapNotNull null

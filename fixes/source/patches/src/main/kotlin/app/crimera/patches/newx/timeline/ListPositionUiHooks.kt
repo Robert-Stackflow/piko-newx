@@ -110,12 +110,15 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
     disposal.addInstructions(0,"iget-object v0, p0, $lazyField\ninvoke-static {v0}, $UI_RUNTIME->pause($OBJ)V")
 
     val renderer = Fingerprint(definingClass="Lcom/x/urt/ui/",name="invoke",returnType=OBJ,
-        strings=listOf("timeline_header_key","timeline_footer_key","timelineModule")).requireSingle("final lazy items builder").method
+        strings=listOf("timeline_header_key","timeline_footer_key")).requireSingle("final lazy items builder").method
     val rendererClass = context.mutableClassDefBy(renderer.definingClass)
     val rendererState = rendererClass.fields.filter { it.type == lazy.type }.unique("builder lazy state")
     val scopeType = renderer.instructions.mapNotNull { it.getReference<MethodReference>() }.filter {
         it.name != "<init>" && it.definingClass.startsWith("Landroidx/compose/foundation/lazy/") &&
-            it.parameterTypes.map(CharSequence::toString) == listOf(OBJ,OBJ,"Lkotlin/jvm/functions/Function3;")
+            it.parameterTypes.map(CharSequence::toString) in listOf(
+                listOf(OBJ,OBJ,"Lkotlin/jvm/functions/Function3;"),
+                listOf(it.definingClass,OBJ,"Lkotlin/jvm/functions/Function3;","I")
+            )
     }.distinctBy { it.definingClass }.unique("final lazy scope").definingClass
     val scope = context.mutableClassDefBy(scopeType)
     val intervals = scope.fields.filter { it.type.startsWith("Landroidx/appcompat/widget/") }.unique("interval storage")
@@ -129,11 +132,13 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
     adapter("nativeCount",2,"check-cast p0, $scopeType\niget-object v0, p0, $intervals\niget v0, v0, $count\nreturn v0")
     adapter("nativeKeyAt",3,"check-cast p0, $scopeType\ninvoke-virtual {p0, p1}, $keyGet\nmove-result-object v0\nreturn-object v0")
     val renderReturn = renderer.instructions.withIndex().filter { it.value.opcode==Opcode.RETURN_OBJECT }.unique("builder return")
-    // v0 and v2 are dead at the final Unit return; enforce the frozen terminal shape.
+    // Insert before the terminal Unit load so the return register is preserved across R8 layouts.
     val previous = renderer.instructions[renderReturn.index-1].getReference<FieldReference>()
-    if(previous?.definingClass!="Lkotlin/Unit;" || (renderReturn.value as OneRegisterInstruction).registerA!=1)
+    if(previous?.definingClass!="Lkotlin/Unit;" ||
+        (renderer.instructions[renderReturn.index-1] as OneRegisterInstruction).registerA !=
+            (renderReturn.value as OneRegisterInstruction).registerA)
         throw PatchException("List anchor: builder terminal contract changed")
-    renderer.addInstructions(renderReturn.index,"""
+    renderer.addInstructions(renderReturn.index-1,"""
         move-object/from16 v0, p0
         iget-object v0, v0, $rendererState
         move-object/from16 v2, p1
