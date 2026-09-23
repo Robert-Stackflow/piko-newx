@@ -349,7 +349,9 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
     val topPolicyLoad=cursorResolver.instructions.take(topAt).withIndex().filter { item ->
         val field=item.value.getReference<FieldReference>()
         item.value.opcode==Opcode.SGET_OBJECT && field!=null &&
-            runCatching { context.mutableClassDefBy(field.type).interfaces.contains(policyType) }.getOrDefault(false)
+            (field.type==policyType || runCatching {
+                context.mutableClassDefBy(field.type).interfaces.contains(policyType)
+            }.getOrDefault(false))
     }.lastOrNull() ?: throw PatchException("List anchor: Top cursor policy not found")
     val topPolicy=topPolicyLoad.value.getReference<FieldReference>()!!
     val policyBranch=cursorResolver.instructions.drop(topPolicyLoad.index).take(4)
