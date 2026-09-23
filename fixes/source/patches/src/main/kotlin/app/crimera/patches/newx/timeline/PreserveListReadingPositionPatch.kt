@@ -150,8 +150,11 @@ val preserveListReadingPositionPatch = bytecodePatch(
         val saveAt = extraction.index + 1
         val continuation = save.instructions[saveAt]
         // The first native policy load overwrites its destination: safe scratch register.
+        // Newer upstream restore-position patches replace the immediately following branch
+        // with NOP so Ranked Following also persists; both forms keep the same register shape.
         if (continuation.opcode != Opcode.IGET_OBJECT || save.instructions[saveAt + 1].opcode != Opcode.IGET_BOOLEAN ||
-            save.instructions[saveAt + 2].opcode != Opcode.IF_EQZ) throw PatchException("List-position save policy shape changed")
+            save.instructions[saveAt + 2].opcode !in setOf(Opcode.IF_EQZ, Opcode.NOP))
+            throw PatchException("List-position save policy shape changed")
         val policyLoad = continuation as TwoRegisterInstruction
         val receiver = policyLoad.registerB
         val scratch = policyLoad.registerA

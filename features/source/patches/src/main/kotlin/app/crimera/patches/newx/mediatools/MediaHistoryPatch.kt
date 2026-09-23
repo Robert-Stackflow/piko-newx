@@ -130,10 +130,41 @@ val mediaHistoryPatch = bytecodePatch(
             val pair = dispatcher.instructions.drop(i + 1).take(2)
             if (pair.size != 2 || pair.any { it.opcode != Opcode.IPUT || (it as TwoRegisterInstruction).registerA != (op as TwoRegisterInstruction).registerA }) return@mapNotNull null
             pair.first().getReference<FieldReference>()
-        }.one("current page write followed by scroll-page write")
-        if (pageWrites.definingClass != video.type || pageWrites.type != "I") throw PatchException("Media history: invalid current-page owner")
-        expose(pageWrites)
-        bridge("videoPage", 1, "check-cast p0, ${video.type}\niget p0, p0, $pageWrites\nreturn p0")
+        }
+        if (pageWrites.size == 1) {
+            val currentPage = pageWrites.single()
+            if (currentPage.definingClass != video.type || currentPage.type != "I")
+                throw PatchException("Media history: invalid current-page owner")
+            expose(currentPage)
+            bridge("videoPage", 1, "check-cast p0, ${video.type}\niget p0, p0, $currentPage\nreturn p0")
+        } else {
+            // X 12.28 stores the current pager index in a viewer-owned state object.
+            val eventRead = dispatcher.instructions.withIndex().filter { (_, op) ->
+                op.opcode == Opcode.IGET && op.getReference<FieldReference>()?.toString() == pageField.toString()
+            }.one("new viewer page event read")
+            val following = dispatcher.instructions.drop(eventRead.index + 1).take(14)
+            val owner = following.mapNotNull { op ->
+                if (op.opcode != Opcode.IGET_OBJECT) return@mapNotNull null
+                op.getReference<FieldReference>()?.takeIf { it.definingClass == video.type && it.type.startsWith("Lcom/x/video/tab/") }
+            }.distinctBy { it.toString() }.one("new viewer page-state owner")
+            val currentPage = following.mapNotNull { op ->
+                if (op.opcode != Opcode.IGET) return@mapNotNull null
+                op.getReference<FieldReference>()?.takeIf { it.definingClass == owner.type && it.type == "I" &&
+                    following.any { later -> later.opcode == Opcode.IPUT &&
+                        later.getReference<FieldReference>()?.toString() == it.toString() } }
+            }.distinctBy { it.toString() }.one("new viewer committed page index")
+            expose(owner); expose(currentPage)
+            bridge("videoPage", 1, """
+                check-cast p0, ${video.type}
+                iget-object p0, p0, $owner
+                if-nez p0, :present
+                const/4 p0, -0x1
+                return p0
+                :present
+                iget p0, p0, $currentPage
+                return p0
+            """)
+        }
         bridge("videoItems", 1, "check-cast p0, ${video.type}\ninvoke-virtual {p0}, $items\nmove-result-object p0\nreturn-object p0")
         bridge("isVideoPageEvent", 1, "instance-of p0, p0, ${page.originalClassDef.type}\nreturn p0")
         bridge("isMediaSelectionEvent", 1, "instance-of p0, p0, ${selected.originalClassDef.type}\nreturn p0")
