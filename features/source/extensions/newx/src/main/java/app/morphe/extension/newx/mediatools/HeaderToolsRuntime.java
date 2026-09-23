@@ -54,6 +54,7 @@ public final class HeaderToolsRuntime {
     public static Function1<?, ?> factory(boolean video) { return video ? VIDEO : HOME; }
     public static Function1<?, ?> updater() { return UPDATE; }
     public static void home(Object composer) { render(composer, false); }
+    public static void video(Object composer) { render(composer, true); }
     private static void render(Object composer, boolean video) { throw new IllegalStateException("Header bridge missing"); }
     public static Function3<Object, Object, Object, Object> wrapVideoActions(Object original) {
         return new VideoActions(original);

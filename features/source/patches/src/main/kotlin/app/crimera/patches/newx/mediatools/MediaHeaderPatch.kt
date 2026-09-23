@@ -118,6 +118,7 @@ internal val mediaHeaderPatch = bytecodePatch(default = false) {
 
         // The portrait header's More action identifies its parent. That parent's shared appbar
         // adapter is also used by the landscape branch, so both wrap the same action contract.
+        if (rowEndCandidates.size == 1) {
         val videoActions = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "invoke", returnType = "Ljava/lang/Object;",
             parameters = listOf("Ljava/lang/Object;", "Ljava/lang/Object;"),
             filters = listOf(literal(getResourceId(ResourceType.STRING, "more_options"))))
@@ -153,5 +154,23 @@ internal val mediaHeaderPatch = bytecodePatch(default = false) {
             invoke-static/range {v$action .. v$action}, $HEADER->wrapVideoActions(Ljava/lang/Object;)$FUNCTION3
             move-result-object v$out
         """.trimIndent())
+        } else {
+            // In X 12.28 the video action content is invoked directly in the shared appbar.
+            // Add our lock child immediately before it, inside the same Compose row.
+            val appbar = Fingerprint(definingClass = "Lcom/x/video/tab/", returnType = "V",
+                parameters = listOf("Lkotlin/jvm/functions/Function0;", MODIFIER,
+                    "Landroidx/compose/runtime/internal/f;", COMPOSER, "I"))
+                .scopedMatchAll().map { it.method }.exact("new video shared appbar")
+            val calls = appbar.instructions.withIndex().filter { (_, instruction) ->
+                val ref = instruction.getReference<MethodReference>()
+                instruction.opcode == Opcode.INVOKE_VIRTUAL && ref?.definingClass == "Landroidx/compose/runtime/internal/f;" &&
+                    ref.name == "invoke" && ref.parameters() == listOf("Ljava/lang/Object;", "Ljava/lang/Object;") &&
+                    instruction is FiveRegisterInstruction && instruction.registerCount == 3
+            }
+            val actionCall = calls.exact("new video native action invocation")
+            val composerRegister = (actionCall.value as FiveRegisterInstruction).registerD
+            appbar.addInstructions(actionCall.index,
+                "invoke-static/range {v$composerRegister .. v$composerRegister}, $HEADER->video(Ljava/lang/Object;)V")
+        }
     }
 }
