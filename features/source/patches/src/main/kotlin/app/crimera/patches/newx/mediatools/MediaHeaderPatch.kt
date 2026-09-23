@@ -88,7 +88,7 @@ internal val mediaHeaderPatch = bytecodePatch(default = false) {
         // The header owns left/right weighted rows around the centered logo. Insert before the
         // consecutive right-row and outer-row closes, not at method entry or the skip branch.
         val ops = home.instructions.toList()
-        val rowEnd = (0 until ops.lastIndex).filter { i ->
+        val rowEndCandidates = (0 until ops.lastIndex).filter { i ->
             val a = ops[i]; val b = ops[i + 1]
             val ref = a.getReference<MethodReference>()
             a.opcode == Opcode.INVOKE_VIRTUAL && b.opcode == Opcode.INVOKE_VIRTUAL && ref != null &&
@@ -96,7 +96,23 @@ internal val mediaHeaderPatch = bytecodePatch(default = false) {
                 ref.toString() == b.getReference<MethodReference>()?.toString() &&
                 a is FiveRegisterInstruction && b is FiveRegisterInstruction && a.registerCount == 2 && b.registerCount == 2 &&
                 a.registerC == b.registerC && a.registerD == b.registerD
-        }.exact("home right action row close pair")
+        }
+        // Compose 1.10 folds three consecutive end-node calls into a helper. Its first end
+        // closes the trailing action row; insert before the helper, after both icon branches.
+        val rowEnd = if (rowEndCandidates.size == 1) rowEndCandidates.single() else {
+            val close = ops.withIndex().filter { (_, instruction) ->
+                val ref = instruction.getReference<MethodReference>()
+                instruction.opcode == Opcode.INVOKE_STATIC && ref?.returnType == "V" &&
+                    ref.parameters() == listOf("Landroidx/compose/runtime/m0;", "Z", "Z", "Z") &&
+                    classDefByOrNull(ref.definingClass)?.methods?.any { method ->
+                        method.toString() == ref.toString() && method.implementation?.instructions?.let { body ->
+                            body.count() == 4 && body.take(3).all { it.opcode == Opcode.INVOKE_VIRTUAL &&
+                                it.getReference<MethodReference>()?.parameters() == listOf("Z") }
+                        } == true
+                    } == true
+            }.exact("home folded action row close")
+            close.index
+        }
         val composerRegister = (ops[rowEnd] as FiveRegisterInstruction).registerC
         home.addInstructions(rowEnd, "invoke-static/range {v$composerRegister .. v$composerRegister}, $HEADER->home(Ljava/lang/Object;)V")
 
