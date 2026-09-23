@@ -374,7 +374,13 @@ val mediaHistoryPatch = bytecodePatch(
         val detailLife = detail.methods.filter { it.name == "getLifecycle" && it.parameterTypes.isEmpty() }.one("detail lifecycle")
         if (videoLife.returnType != detailLife.returnType || galleryLife.returnType != detailLife.returnType)
             throw PatchException("Media history: lifecycle contracts disagree")
-        val lifeState = mutableClassDefBy(videoLife.returnType).methods.filter { it.name == "getState" && it.parameterTypes.isEmpty() }.one("lifecycle state")
+        val lifeState = mutableClassDefBy(videoLife.returnType).methods.filter { method ->
+            method.parameterTypes.isEmpty() && runCatching {
+                val candidate = mutableClassDefBy(method.returnType)
+                candidate.superclass == "Ljava/lang/Enum;" &&
+                    candidate.fields.any { it.name == "RESUMED" } && candidate.fields.any { it.name == "DESTROYED" }
+            }.getOrDefault(false)
+        }.one("lifecycle state")
         val state = mutableClassDefBy(lifeState.returnType)
         if (state.superclass != "Ljava/lang/Enum;" || !state.fields.any { it.name == "RESUMED" } || !state.fields.any { it.name == "DESTROYED" })
             throw PatchException("Media history: unsupported lifecycle states")

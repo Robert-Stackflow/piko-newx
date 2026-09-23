@@ -45,7 +45,13 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
         runtime.methods.remove(old)
         runtime.methods.add(replacement)
     }
-    val flowGetter = component.methods.filter { it.name == "getState" && it.parameterTypes.isEmpty() }.unique("component state getter")
+    val flowGetter = component.methods.filter { method ->
+        method.parameterTypes.isEmpty() && method.returnType.startsWith("Lkotlinx/coroutines/flow/") &&
+            method.instructions.map { it.opcode } == listOf(Opcode.IGET_OBJECT, Opcode.RETURN_OBJECT) &&
+            runCatching { context.mutableClassDefBy(method.returnType).methods.any {
+                it.name == "getValue" && it.parameterTypes.isEmpty()
+            } }.getOrDefault(false)
+    }.unique("component state getter")
     if (flowGetter.instructions.map { it.opcode } != listOf(Opcode.IGET_OBJECT,Opcode.RETURN_OBJECT))
         throw PatchException("List anchor: state getter is not a direct read")
     val flowField = flowGetter.fields().unique("state flow field")
@@ -85,7 +91,7 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
     val lazy = context.mutableClassDefBy(lazyField.type)
     val interfaceField = life.fields.filter { it.type != lazy.type }.unique("lifecycle timeline component")
     val flowInterface = context.mutableClassDefBy(interfaceField.type).methods.filter {
-        it.name == "getState" && it.parameterTypes.isEmpty() && it.returnType == flowGetter.returnType
+        it.name == flowGetter.name && it.parameterTypes.isEmpty() && it.returnType == flowGetter.returnType
     }.unique("delegating state interface")
     val positionInterface = context.mutableClassDefBy(interfaceField.type).methods.filter {
         it.returnType==holder && it.parameterTypes.isEmpty()
