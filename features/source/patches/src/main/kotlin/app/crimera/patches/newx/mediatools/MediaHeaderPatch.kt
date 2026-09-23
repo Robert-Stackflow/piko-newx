@@ -160,7 +160,11 @@ internal val mediaHeaderPatch = bytecodePatch(default = false) {
             val appbar = Fingerprint(definingClass = "Lcom/x/video/tab/", returnType = "V",
                 parameters = listOf("Lkotlin/jvm/functions/Function0;", MODIFIER,
                     "Landroidx/compose/runtime/internal/f;", COMPOSER, "I"))
-                .scopedMatchAll().map { it.method }.exact("new video shared appbar")
+                .scopedMatchAll().map { it.method }.filter { method -> method.instructions.any { instruction ->
+                    val ref = instruction.getReference<MethodReference>()
+                    instruction.opcode == Opcode.INVOKE_VIRTUAL && ref?.definingClass == "Landroidx/compose/runtime/internal/f;" &&
+                        ref.name == "invoke" && ref.parameters() == listOf("Ljava/lang/Object;", "Ljava/lang/Object;")
+                } }.exact("new video shared appbar")
             val calls = appbar.instructions.withIndex().filter { (_, instruction) ->
                 val ref = instruction.getReference<MethodReference>()
                 instruction.opcode == Opcode.INVOKE_VIRTUAL && ref?.definingClass == "Landroidx/compose/runtime/internal/f;" &&
