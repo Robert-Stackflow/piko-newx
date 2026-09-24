@@ -124,6 +124,8 @@ public class Fixture {
    Lazy home=new Lazy("head","old","tail");ListPositionRuntime.captureBuilder(new Builder(home,home.keys));
    ListPositionRuntime.bind(homeFlow,home);steps(3);
    home.index=1;home.key="old";home.offset=31;steps(12);
+   // Pull refresh can dispatch the same native top event as a tab tap.
+   ListPositionRuntime.beginRefresh(homeFlow);ListPositionRuntime.top(homeFlow);
    String[] homeNext={"new","head","old","tail"};
    ListPositionRuntime.captureBuilder(new Builder(home,homeNext));home.keys=homeNext;home.index=0;home.key="new";home.offset=0;
    steps(8);check(home.requests==1 && home.index==2 && home.offset==31);

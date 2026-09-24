@@ -357,7 +357,7 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
         throw PatchException("List anchor: server callback receiver unproven")
     consumer.replaceInstruction(branch+3,"invoke-virtual {v$callbackReg}, $serverBridge")
 
-    // Reuse the native Top-cursor lookup for opted-in List pull-to-refresh only.
+    // Reuse the native Top-cursor lookup for opted-in List and For You refresh.
     // Do not change AUTO_REFRESH, server instructions, the DB merge, or inject old data.
     val cursorResolver=component.methods.filter { m -> AccessFlags.STATIC.isSet(m.accessFlags) &&
         m.parameterTypes.size==3 && m.parameterTypes[0].toString()==componentType &&
@@ -388,13 +388,15 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
         (policyBranch[2] as OneRegisterInstruction).registerA!=(policyBranch[3] as OneRegisterInstruction).registerA)
         throw PatchException("List anchor: Top policy is not compared with the resolver input")
     val cursorBridge=listBridge(componentType,"pikoListRefreshCursor",listOf(policyType),policyType,5,"""
+        iget-object v2, p0, $flowField
+        invoke-static {v2}, $UI_RUNTIME->beginRefresh($OBJ)V
         iget-object v0, p0, $repoField
         invoke-interface {v0}, $timelineGet
         move-result-object v1
         invoke-interface {v0}, $identityGet
         move-result-object v0
         iget-object v0, v0, $identityField
-        invoke-static {v1, v0}, Lapp/morphe/extension/newx/timeline/ListReadingPosition;->active(Ljava/lang/Enum;$STR)Z
+        invoke-static {v1, v0}, Lapp/morphe/extension/newx/timeline/ListReadingPosition;->preserveRefresh(Ljava/lang/Enum;$STR)Z
         move-result v0
         if-eqz v0, :native
         sget-object v0, $topPolicy
@@ -426,5 +428,5 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
         invoke-virtual {v${lookupRegs.registerC}, v${lookupRegs.registerD}}, $cursorBridge
         move-result-object v${lookupRegs.registerD}
     """.trimIndent())
-    println("List anchor: confirmed keys; server/user top separated; native Top cursor for List pull refresh; no data injection")
+    println("List anchor: confirmed keys; server/user top separated; native Top cursor for List/For You pull refresh; no data injection")
 }

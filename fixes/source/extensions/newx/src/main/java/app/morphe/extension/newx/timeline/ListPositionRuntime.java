@@ -18,6 +18,7 @@ import app.morphe.extension.newx.settings.SettingsRegistry;
 public final class ListPositionRuntime {
     private static final Map<Object,String> SCOPES = new WeakHashMap<>();
     private static final Map<String,ListAnchorState.Anchor> HOME_ANCHORS = new HashMap<>();
+    private static final Map<String,Long> REFRESH_STARTS = new HashMap<>();
     private static final Map<Object,Object> PROVIDERS = new WeakHashMap<>();
     private static final Map<Object,Object> BUILDERS = new WeakHashMap<>();
     private static final Map<Object,Session> ACTIVE = new WeakHashMap<>();
@@ -135,10 +136,27 @@ public final class ListPositionRuntime {
             trace("gesture-cancel",session);
         }
     }
+    public static void beginRefresh(Object flow) {
+        if(Looper.myLooper()!=Looper.getMainLooper()) return;
+        String scope; synchronized(SCOPES) { scope=SCOPES.get(flow); }
+        if(scope!=null && scope.startsWith("home:")) {
+            REFRESH_STARTS.put(scope,SystemClock.uptimeMillis());
+            for(Session session:new ArrayList<>(ACTIVE.values()))
+                if(scope.equals(session.scope)) trace("pull-refresh",session);
+        }
+    }
     public static void top(Object flow) {
         if(Looper.myLooper()!=Looper.getMainLooper()) return;
         String scope; synchronized(SCOPES) { scope=SCOPES.get(flow); }
         if(scope==null) return;
+        if(scope.startsWith("home:")) {
+            Long started=REFRESH_STARTS.remove(scope);
+            if(started!=null && SystemClock.uptimeMillis()-started<3000) {
+                for(Session session:new ArrayList<>(ACTIVE.values()))
+                    if(scope.equals(session.scope)) trace("refresh-top-retained",session);
+                return;
+            }
+        }
         for(Session session:new ArrayList<>(ACTIVE.values())) if(scope.equals(session.scope)) {
             session.state.clear(); session.awaitingKey=null;
             session.userTopPending=true;

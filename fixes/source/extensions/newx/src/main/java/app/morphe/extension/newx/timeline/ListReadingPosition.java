@@ -14,6 +14,9 @@ public final class ListReadingPosition {
             && SettingsRegistry.getBooleanOrDefault("newx.timeline.restore_position",true);
     }
     public static boolean suppressServerTop(Enum<?> type, String id) {
+        return preserveRefresh(type,id);
+    }
+    public static boolean preserveRefresh(Enum<?> type, String id) {
         return active(type,id) || type != null && "FOR_YOU".equals(type.name())
             && SettingsRegistry.getBooleanOrDefault("newx.timeline.restore_position",true);
     }
