@@ -67,10 +67,6 @@ public class SettingsRegistry {
   public static final java.util.Map<String,Boolean> values = new java.util.HashMap<>();
   public static boolean getBooleanOrDefault(String k,boolean d) { return values.getOrDefault(k,d); }
 }''',
-            "app/morphe/extension/newx/timeline/TimelineScrollPositionStore.java": '''package app.morphe.extension.newx.timeline;
-public class TimelineScrollPositionStore {
-  public static int[] restore(Enum<?> type,String id) { return null; }
-}''',
             "ListFixTest.java": '''import java.util.*;
 import app.morphe.extension.newx.timeline.ListReadingPosition;
 import app.morphe.extension.newx.settings.SettingsRegistry;

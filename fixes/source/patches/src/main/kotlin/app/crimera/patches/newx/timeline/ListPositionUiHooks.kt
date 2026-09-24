@@ -113,6 +113,17 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
         strings=listOf("timeline_header_key","timeline_footer_key")).requireSingle("final lazy items builder").method
     val rendererClass = context.mutableClassDefBy(renderer.definingClass)
     val rendererState = rendererClass.fields.filter { it.type == lazy.type }.unique("builder lazy state")
+    val builderCtor = rendererClass.methods.filter { it.name=="<init>" }.unique("final builder constructor")
+    if(builderCtor.instructions.lastOrNull()?.opcode!=Opcode.RETURN_VOID ||
+        builderCtor.instructions.any { it is OffsetInstruction } ||
+        builderCtor.instructions.count { it.opcode==Opcode.IPUT_OBJECT && it.getReference<FieldReference>()?.toString()==rendererState.toString() }!=1 ||
+        builderCtor.implementation!!.registerCount-builderCtor.parameterTypes.size-1>15)
+        throw PatchException("List anchor: final builder constructor is not a straight-line initialized object")
+    // Constructor is straight-line: publish the complete builder at its only return,
+    // without changing any branch targets or live registers in the Compose draw method.
+    builderCtor.addInstructions(builderCtor.instructions.size-1,
+        "invoke-static {p0}, $UI_RUNTIME->captureBuilder($OBJ)V")
+    adapter("nativeBuilderLazy",2,"check-cast p0, ${rendererClass.type}\niget-object v0, p0, $rendererState\nreturn-object v0")
     val scopeType = renderer.instructions.mapNotNull { it.getReference<MethodReference>() }.filter {
         it.name != "<init>" && it.definingClass.startsWith("Landroidx/compose/foundation/lazy/") &&
             it.parameterTypes.map(CharSequence::toString) in listOf(
@@ -121,6 +132,17 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
             )
     }.distinctBy { it.definingClass }.unique("final lazy scope").definingClass
     val scope = context.mutableClassDefBy(scopeType)
+    val scopeCtor = scope.methods.filter { it.name=="<init>" &&
+        it.parameterTypes.map(CharSequence::toString)==listOf("Lkotlin/jvm/functions/Function1;") }
+        .unique("final lazy scope constructor")
+    if(scopeCtor.instructions.map { it.opcode }.takeLast(2)!=listOf(Opcode.INVOKE_INTERFACE,Opcode.RETURN_VOID))
+        throw PatchException("List anchor: scope constructor no longer invokes the item builder")
+    adapter("nativeBuildProvider",3,"""
+        check-cast p0, Lkotlin/jvm/functions/Function1;
+        new-instance v0, $scopeType
+        invoke-direct {v0, p0}, $scopeCtor
+        return-object v0
+    """)
     val intervals = scope.fields.filter { it.type.startsWith("Landroidx/appcompat/widget/") }.unique("interval storage")
     val sticky = scope.methods.filter { m -> AccessFlags.STATIC.isSet(m.accessFlags) &&
         m.parameterTypes.map(CharSequence::toString).take(2)==listOf(scopeType,STR) }.unique("sticky item registration")

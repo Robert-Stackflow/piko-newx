@@ -15,7 +15,8 @@ import app.morphe.extension.shared.Utils;
 /** All native adapter bodies are replaced with verified direct bytecode accesses. */
 public final class ListPositionRuntime {
     private static final Map<Object,String> SCOPES = new WeakHashMap<>();
-    private static final Map<Object,WeakReference<Object>> PROVIDERS = new WeakHashMap<>();
+    private static final Map<Object,Object> PROVIDERS = new WeakHashMap<>();
+    private static final Map<Object,Object> BUILDERS = new WeakHashMap<>();
     private static final Map<Object,Session> ACTIVE = new WeakHashMap<>();
     private static final Map<Object,WeakReference<Object>> INTERACTIONS = new WeakHashMap<>();
     private static Handler handler;
@@ -24,7 +25,7 @@ public final class ListPositionRuntime {
     private static final class Session {
         final String scope;
         final ListAnchorState state;
-        WeakReference<Object> provider = new WeakReference<>(null);
+        Object provider, builtBuilder;
         long lastWrite;
         String writtenKey;
         String awaitingKey;
@@ -55,14 +56,15 @@ public final class ListPositionRuntime {
             if(old!=null) { observe(lazy,old); persist(old,true); }
             Session session=new Session(scope); ACTIVE.put(lazy,session);
             INTERACTIONS.put(nativeInteraction(lazy),new WeakReference<>(lazy));
-            WeakReference<Object> ref=PROVIDERS.get(lazy);
-            if(ref!=null && ref.get()!=null) render(lazy,ref.get());
+            Object provider=PROVIDERS.get(lazy);
+            if(provider!=null) render(lazy,provider);
             trace("bind",session); schedule();
         } catch(RuntimeException error) { Log.d("PikoListAnchor","bind unavailable"); }
     }
     public static void pause(Object lazy) {
         if(Looper.myLooper()!=Looper.getMainLooper()) return;
         Session session=ACTIVE.remove(lazy);
+        BUILDERS.remove(lazy); PROVIDERS.remove(lazy);
         if(session!=null) {
             // Capture a coherent measured frame even when leaving during a fling.
             observe(lazy,session); persist(session,true);
@@ -77,7 +79,7 @@ public final class ListPositionRuntime {
         if(Looper.myLooper()!=Looper.getMainLooper()) return;
         // Called inside Compose's derived item-provider calculation. NEVER read snapshots here:
         // provider -> layoutInfo -> provider is a cyclic dependency and can freeze the main thread.
-        PROVIDERS.put(lazy,new WeakReference<>(provider));
+        PROVIDERS.put(lazy,provider);
         Session session=ACTIVE.get(lazy);
         if(session!=null && !session.loggedRender) {
             session.loggedRender=true;
@@ -85,9 +87,16 @@ public final class ListPositionRuntime {
         }
         schedule();
     }
+    public static void captureBuilder(Object builder) {
+        if(Looper.myLooper()!=Looper.getMainLooper()) return;
+        Object lazy=nativeBuilderLazy(builder);
+        if(lazy==null) return;
+        BUILDERS.put(lazy,builder);
+        if(ACTIVE.containsKey(lazy)) schedule();
+    }
     private static void publish(Object lazy,Object provider) {
         Session session=ACTIVE.get(lazy);
-        if(session==null || session.provider.get()==provider) return;
+        if(session==null || session.provider==provider) return;
         try {
             observe(lazy,session); // old measured key is compared with OLD final keys
             int count=nativeCount(provider);
@@ -98,7 +107,7 @@ public final class ListPositionRuntime {
             if(count<0 || count>20000) return;
             String[] keys=new String[count];
             for(int i=0;i<count;i++) keys[i]=nativeKey(nativeKeyAt(provider,i));
-            session.provider=new WeakReference<>(provider);
+            session.provider=provider;
             if(session.state.entries(keys)) {
                 session.readyGeneration=-1; trace("data",session);
             }
@@ -138,8 +147,15 @@ public final class ListPositionRuntime {
         for(Map.Entry<Object,Session> entry:new ArrayList<>(ACTIVE.entrySet())) {
             Object lazy=entry.getKey(); Session session=entry.getValue();
             try {
-                WeakReference<Object> ref=PROVIDERS.get(lazy);
-                Object provider=ref==null?null:ref.get();
+                Object builder=BUILDERS.get(lazy);
+                if(builder!=null && builder!=session.builtBuilder) {
+                    session.builtBuilder=builder;
+                    // Recreate only the lightweight LazyListScope, after composition.
+                    // Its constructor invokes the same X item-registration lambda.
+                    Object generated=nativeBuildProvider(builder);
+                    if(generated!=null) render(lazy,generated);
+                }
+                Object provider=PROVIDERS.get(lazy);
                 int[] snapshot=nativeSnapshot(lazy);
                 if(snapshot==null) {
                     if(!session.loggedMissingSnapshot) {
@@ -158,7 +174,7 @@ public final class ListPositionRuntime {
                 // its coherent frame is allowed; a fling must not erase the bookmark.
                 if(snapshot[2]!=0) { session.state.cancel(); session.awaitingKey=null; }
                 if(provider!=null) publish(lazy,provider);
-                if(session.provider.get()==null) continue;
+                if(session.provider==null) continue;
                 if(snapshot[2]!=0) {
                     session.state.cancel(); observe(lazy,session); persist(session,false); continue;
                 }
@@ -208,7 +224,7 @@ public final class ListPositionRuntime {
         schedule();
     }
     private static void observe(Object lazy,Session session) {
-        if(session.provider.get()==null || session.state.pending() || session.awaitingKey!=null || session.userTopPending) return;
+        if(session.provider==null || session.state.pending() || session.awaitingKey!=null || session.userTopPending) return;
         try {
             int[] snapshot=nativeSnapshot(lazy);
             if(snapshot!=null && coherent(lazy,session,snapshot))
@@ -216,7 +232,7 @@ public final class ListPositionRuntime {
         } catch(RuntimeException ignored) {}
     }
     private static boolean coherent(Object lazy,Session session,int[] snapshot) {
-        Object provider=session.provider.get();
+        Object provider=session.provider;
         if(provider==null || snapshot[0]<0 || snapshot[0]>=nativeCount(provider)) return false;
         Object measured=nativeMeasuredKey(lazy);
         return measured!=null && measured.equals(nativeKeyAt(provider,snapshot[0]));
@@ -249,6 +265,8 @@ public final class ListPositionRuntime {
         Context c=Utils.getContext(); return c==null?null:c.getSharedPreferences("piko_newx_list_anchors_v2",Context.MODE_PRIVATE);
     }
     private static Object nativeFlow(Object component) { return null; }
+    private static Object nativeBuilderLazy(Object builder) { return null; }
+    private static Object nativeBuildProvider(Object builder) { return null; }
     private static Object nativeInteraction(Object lazy) { return null; }
     private static Object nativeLayout(Object lazy) { return null; }
     private static Object nativeMeasuredKey(Object lazy) { return null; }

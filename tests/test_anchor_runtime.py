@@ -14,6 +14,8 @@ class RuntimeTests(unittest.TestCase):
         # Only the nine patch-time native stubs are replaced. Run the actual observer/state/store.
         replacements = {
             'private static Object nativeFlow(Object component) { return null; }': 'private static Object nativeFlow(Object component) { return component; }',
+            'private static Object nativeBuilderLazy(Object builder) { return null; }': 'private static Object nativeBuilderLazy(Object builder) { return ((Fixture.Builder)builder).lazy; }',
+            'private static Object nativeBuildProvider(Object builder) { return null; }': 'private static Object nativeBuildProvider(Object builder) { return ((Fixture.Builder)builder).keys; }',
             'private static Object nativeInteraction(Object lazy) { return null; }': 'private static Object nativeInteraction(Object lazy) { return lazy; }',
             'private static Object nativeLayout(Object lazy) { return null; }': 'private static Object nativeLayout(Object lazy) { return ((Fixture.Lazy)lazy).layout; }',
             'private static Object nativeMeasuredKey(Object lazy) { return null; }': 'private static Object nativeMeasuredKey(Object lazy) { return ((Fixture.Lazy)lazy).key; }',
@@ -41,7 +43,6 @@ public class Handler { static java.util.Queue<Runnable> q=new java.util.ArrayDeq
  public Editor remove(String k){p.remove(k);return this;} public void apply(){} } }''',
             'app/morphe/extension/shared/Utils.java': 'package app.morphe.extension.shared; public class Utils { static android.content.Context c=new android.content.Context(); public static android.content.Context getContext(){return c;} }',
             'app/morphe/extension/newx/settings/SettingsRegistry.java': 'package app.morphe.extension.newx.settings; public class SettingsRegistry { public static boolean getBooleanOrDefault(String k,boolean d){return d;} }',
-            PACKAGE+'TimelineScrollPositionStore.java': 'package app.morphe.extension.newx.timeline; public class TimelineScrollPositionStore { public static int[] restore(Enum<?> t,String id){return null;} }',
             PACKAGE+'Fixture.java': '''package app.morphe.extension.newx.timeline;
 public class Fixture {
  enum Type { LIST_POSTS, FOLLOWING }
@@ -49,14 +50,15 @@ public class Fixture {
  static boolean building;
  static class Lazy { Object layout=new Object(); String[] keys; String key; int index,offset,requests,offsetError,requestedIndex,requestedOffset; boolean moving,ignoreRequest;
    Lazy(String...keys){this.keys=keys;key=keys.length==0?null:keys[0];} }
+ static class Builder { Lazy lazy; String[] keys; Builder(Lazy lazy,String[] keys){this.lazy=lazy;this.keys=keys;} }
  static void check(boolean v){if(!v)throw new AssertionError("runtime "+checks); checks++;}
  static void steps(int n){for(int i=0;i<n;i++)android.os.Handler.step();}
  static Object flow(long account,String id){Object f=new Object(); ListPositionRuntime.register(f,Type.LIST_POSTS,id,account);return f;}
  public static void main(String[] args){
    Object f=flow(1,"list"); Lazy s=new Lazy("a","b","c");
-   ListPositionRuntime.bind(f,s); building=true; ListPositionRuntime.render(s,s.keys); building=false; steps(3); check(s.requests==0);
+   ListPositionRuntime.captureBuilder(new Builder(s,s.keys)); ListPositionRuntime.bind(f,s); steps(3); check(s.requests==0);
    s.index=1;s.offset=60;s.key="b";steps(12);
-   String[] next={"new",null,"a","b","c"};ListPositionRuntime.render(s,next);s.keys=next;
+   String[] next={"new",null,"a","b","c"};ListPositionRuntime.captureBuilder(new Builder(s,next));s.keys=next;
    s.index=0;s.offset=0;s.key="new";s.layout=new Object(); steps(8);
    check(s.requests==1);check(s.index==3 && s.offset==60);check(next.length==5 && next[0].equals("new"));
    steps(12);ListPositionRuntime.pause(s);

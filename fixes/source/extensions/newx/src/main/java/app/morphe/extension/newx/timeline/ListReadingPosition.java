@@ -1,11 +1,9 @@
 package app.morphe.extension.newx.timeline;
 
-import android.util.Log;
 import app.morphe.extension.newx.settings.SettingsRegistry;
 
 /** Disables the obsolete ordinal cache only for opted-in Lists. */
 public final class ListReadingPosition {
-    private static int forYouRestoreTraces, forYouSaveTraces;
     private ListReadingPosition() {}
     public static boolean enabled(Enum<?> type) {
         return type != null && "LIST_POSTS".equals(type.name())
@@ -16,17 +14,10 @@ public final class ListReadingPosition {
             && SettingsRegistry.getBooleanOrDefault("newx.timeline.restore_position",true);
     }
     public static int[] restore(Enum<?> type, String id) {
-        if (type != null && "FOR_YOU".equals(type.name()) && forYouRestoreTraces++ < 8) {
-            int[] saved = TimelineScrollPositionStore.restore(type, id);
-            Log.d("PikoListAnchor", saved == null ? "for-you-position-getter persisted=none"
-                : "for-you-position-getter persisted=" + saved[0] + "," + saved[1]);
-        }
         // Returning neutral position also disables native initial ordinal restoration.
         return active(type,id) ? new int[]{0,0} : null;
     }
     public static boolean save(Enum<?> type, String id, int index, int offset) {
-        if (type != null && "FOR_YOU".equals(type.name()) && forYouSaveTraces++ < 8)
-            Log.d("PikoListAnchor", "for-you-position-save index=" + index + " offset=" + offset);
         // UI lifecycle observer persists identities; never write the shared ordinal cache.
         return active(type,id);
     }
