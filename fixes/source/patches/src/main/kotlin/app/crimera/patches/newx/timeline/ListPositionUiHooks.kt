@@ -357,7 +357,8 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
         throw PatchException("List anchor: server callback receiver unproven")
     consumer.replaceInstruction(branch+3,"invoke-virtual {v$callbackReg}, $serverBridge")
 
-    // Reuse the native Top-cursor lookup for opted-in List and For You refresh.
+    // Keep the List Top-cursor lookup; For You uses its native policy with a
+    // viewport-aware request so X can retain the current viewport itself.
     // Do not change AUTO_REFRESH, server instructions, the DB merge, or inject old data.
     val cursorResolver=component.methods.filter { m -> AccessFlags.STATIC.isSet(m.accessFlags) &&
         m.parameterTypes.size==3 && m.parameterTypes[0].toString()==componentType &&
@@ -396,7 +397,7 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
         invoke-interface {v0}, $identityGet
         move-result-object v0
         iget-object v0, v0, $identityField
-        invoke-static {v1, v0}, Lapp/morphe/extension/newx/timeline/ListReadingPosition;->preserveRefresh(Ljava/lang/Enum;$STR)Z
+        invoke-static {v1, v0}, Lapp/morphe/extension/newx/timeline/ListReadingPosition;->active(Ljava/lang/Enum;$STR)Z
         move-result v0
         if-eqz v0, :native
         sget-object v0, $topPolicy
@@ -423,10 +424,41 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
     val lookupRegs=lookup.value as FiveRegisterInstruction
     if(lookupRegs.registerCount!=3 || lookupRegs.registerC==lookupRegs.registerD)
         throw PatchException("List anchor: pull refresh cursor registers changed")
+    val pullField=manual.instructions[pull].getReference<FieldReference>()!!
+    val requestRegister=(manual.instructions[pull] as OneRegisterInstruction).registerA
+    val requestType=pullField.type
+    val viewportRequest=context.mutableClassDefBy(requestType).fields.filter {
+        it.name=="VIEWPORT_AWARE_AUTO_REFRESH" && it.type==requestType
+    }.unique("viewport-aware refresh request")
+    if(requestRegister>15 || lookupRegs.registerC>15 ||
+        manual.instructions.take(pull).takeLast(8).none {
+            it.opcode==Opcode.CHECK_CAST && it.getReference<TypeReference>()?.type==componentType &&
+                (it as OneRegisterInstruction).registerA==lookupRegs.registerC
+        } || manual.instructions.drop(pull+1).take(12).count {
+            it.opcode==Opcode.IPUT_OBJECT && (it as TwoRegisterInstruction).registerA==requestRegister
+        }!=1)
+        throw PatchException("List anchor: pull refresh request register is unproven")
+    val requestBridge=listBridge(componentType,"pikoForYouRefreshRequest",listOf(requestType),requestType,5,"""
+        iget-object v0, p0, $repoField
+        invoke-interface {v0}, $timelineGet
+        move-result-object v0
+        invoke-static {v0}, Lapp/morphe/extension/newx/timeline/ListReadingPosition;->viewportForYou(Ljava/lang/Enum;)Z
+        move-result v0
+        if-eqz v0, :native
+        sget-object v0, $viewportRequest
+        return-object v0
+        :native
+        return-object p1
+    """)
     component.methods.add(cursorBridge)
+    component.methods.add(requestBridge)
     manual.addInstructions(lookup.index,"""
         invoke-virtual {v${lookupRegs.registerC}, v${lookupRegs.registerD}}, $cursorBridge
         move-result-object v${lookupRegs.registerD}
     """.trimIndent())
-    println("List anchor: confirmed keys; server/user top separated; native Top cursor for List/For You pull refresh; no data injection")
+    manual.addInstructions(pull+1,"""
+        invoke-virtual {v${lookupRegs.registerC}, v$requestRegister}, $requestBridge
+        move-result-object v$requestRegister
+    """.trimIndent())
+    println("List anchor: confirmed keys; server/user top separated; viewport-aware For You pull refresh; native List Top cursor; no data injection")
 }

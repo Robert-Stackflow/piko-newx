@@ -28,7 +28,9 @@ class ListFixTests(unittest.TestCase):
         self.assertNotIn("timelineDraw.addInstructions(0", source)
         self.assertNotIn("renderer.addInstructions(0", source)
         self.assertEqual(source.count("->suppressServerTop("), 1)
-        self.assertEqual(source.count("->preserveRefresh("), 1)
+        self.assertEqual(source.count("->active("), 1)
+        self.assertEqual(source.count("->viewportForYou("), 1)
+        self.assertIn("pikoForYouRefreshRequest", source)
         self.assertIn("->beginRefresh(", source)
 
     @unittest.skipUnless(os.getenv("PIKO_TEST_SOURCE"), "Needs pinned upstream checkout")
@@ -91,6 +93,8 @@ public class ListFixTest {
     check(ListReadingPosition.preserveRefresh(T.FOR_YOU,"home"));
     check(ListReadingPosition.preserveRefresh(T.LIST_POSTS,"LIST_POSTS1"));
     check(!ListReadingPosition.preserveRefresh(T.FOLLOWING,"home"));
+    check(ListReadingPosition.viewportForYou(T.FOR_YOU));
+    check(!ListReadingPosition.viewportForYou(T.LIST_POSTS));
     check(ListReadingPosition.restore(T.FOR_YOU,"home")==null);
     check(ListReadingPosition.save(T.LIST_POSTS,"LIST_POSTS1",-1,0));
     check(Arrays.equals(ListReadingPosition.restore(T.LIST_POSTS,"LIST_POSTS1"),new int[]{0,0}));
@@ -99,6 +103,7 @@ public class ListFixTest {
     check(!ListReadingPosition.save(T.LIST_POSTS,"LIST_POSTS1",0,0));
     check(!ListReadingPosition.suppressServerTop(T.FOR_YOU,"home"));
     check(!ListReadingPosition.preserveRefresh(T.FOR_YOU,"home"));
+    check(!ListReadingPosition.viewportForYou(T.FOR_YOU));
     SettingsRegistry.values.put("newx.timeline.list_reading_position",false);
     check(!ListReadingPosition.enabled(T.LIST_POSTS));
     SettingsRegistry.values.clear();

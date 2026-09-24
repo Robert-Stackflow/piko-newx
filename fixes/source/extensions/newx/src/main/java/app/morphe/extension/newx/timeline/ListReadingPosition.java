@@ -20,6 +20,10 @@ public final class ListReadingPosition {
         return active(type,id) || type != null && "FOR_YOU".equals(type.name())
             && SettingsRegistry.getBooleanOrDefault("newx.timeline.restore_position",true);
     }
+    public static boolean viewportForYou(Enum<?> type) {
+        return type != null && "FOR_YOU".equals(type.name())
+            && SettingsRegistry.getBooleanOrDefault("newx.timeline.restore_position",true);
+    }
     public static int[] restore(Enum<?> type, String id) {
         // Returning neutral position also disables native initial ordinal restoration.
         return active(type,id) ? new int[]{0,0} : null;
