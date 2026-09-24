@@ -20,6 +20,7 @@ public final class ListPositionRuntime {
     private static final Map<Object,WeakReference<Object>> INTERACTIONS = new WeakHashMap<>();
     private static Handler handler;
     private static boolean scheduled;
+    private static boolean rendererSeen;
     private static final class Session {
         final String scope;
         final ListAnchorState state;
@@ -31,6 +32,7 @@ public final class ListPositionRuntime {
         boolean userTopPending;
         long requestedAt;
         int writtenOffset = -1;
+        boolean loggedRender, loggedMissingProvider, loggedMissingSnapshot, loggedSnapshot, loggedCount;
         Session(String scope) { this.scope=scope; state=new ListAnchorState(load(scope)); }
     }
     private ListPositionRuntime() {}
@@ -69,9 +71,18 @@ public final class ListPositionRuntime {
     }
     public static void render(Object lazy,Object provider) {
         if(Looper.myLooper()!=Looper.getMainLooper()) return;
+        if(!rendererSeen) {
+            rendererSeen=true;
+            Log.d("PikoListAnchor","renderer-observed");
+        }
         // Called inside Compose's derived item-provider calculation. NEVER read snapshots here:
         // provider -> layoutInfo -> provider is a cyclic dependency and can freeze the main thread.
         PROVIDERS.put(lazy,new WeakReference<>(provider));
+        Session session=ACTIVE.get(lazy);
+        if(session!=null && !session.loggedRender) {
+            session.loggedRender=true;
+            trace("render-provider",session);
+        }
         schedule();
     }
     private static void publish(Object lazy,Object provider) {
@@ -80,6 +91,10 @@ public final class ListPositionRuntime {
         try {
             observe(lazy,session); // old measured key is compared with OLD final keys
             int count=nativeCount(provider);
+            if(!session.loggedCount) {
+                session.loggedCount=true;
+                Log.d("PikoListAnchor","provider-count="+count+" scope="+Integer.toHexString(session.scope.hashCode()));
+            }
             if(count<0 || count>20000) return;
             String[] keys=new String[count];
             for(int i=0;i<count;i++) keys[i]=nativeKey(nativeKeyAt(provider,i));
@@ -88,7 +103,9 @@ public final class ListPositionRuntime {
                 session.readyGeneration=-1; trace("data",session);
             }
             schedule();
-        } catch(RuntimeException error) { trace("provider-unavailable",session); }
+        } catch(RuntimeException error) {
+            Log.d("PikoListAnchor","provider-unavailable="+error.getClass().getSimpleName());
+        }
     }
     public static void interaction(Object source) {
         if(Looper.myLooper()!=Looper.getMainLooper()) return;
@@ -124,7 +141,19 @@ public final class ListPositionRuntime {
                 WeakReference<Object> ref=PROVIDERS.get(lazy);
                 Object provider=ref==null?null:ref.get();
                 int[] snapshot=nativeSnapshot(lazy);
-                if(snapshot==null) continue;
+                if(snapshot==null) {
+                    if(!session.loggedMissingSnapshot) {
+                        session.loggedMissingSnapshot=true; trace("snapshot-null",session);
+                    }
+                    continue;
+                }
+                if(!session.loggedSnapshot) {
+                    session.loggedSnapshot=true;
+                    Log.d("PikoListAnchor","snapshot-index="+snapshot[0]+" scope="+Integer.toHexString(session.scope.hashCode()));
+                }
+                if(provider==null && !session.loggedMissingProvider) {
+                    session.loggedMissingProvider=true; trace("provider-null",session);
+                }
                 // A real ongoing scroll wins over automatic restoration. Recording
                 // its coherent frame is allowed; a fling must not erase the bookmark.
                 if(snapshot[2]!=0) { session.state.cancel(); session.awaitingKey=null; }
