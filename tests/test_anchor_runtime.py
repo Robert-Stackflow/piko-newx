@@ -45,7 +45,7 @@ public class Handler { static java.util.Queue<Runnable> q=new java.util.ArrayDeq
             'app/morphe/extension/newx/settings/SettingsRegistry.java': 'package app.morphe.extension.newx.settings; public class SettingsRegistry { public static boolean getBooleanOrDefault(String k,boolean d){return d;} }',
             PACKAGE+'Fixture.java': '''package app.morphe.extension.newx.timeline;
 public class Fixture {
- enum Type { LIST_POSTS, FOLLOWING }
+ enum Type { LIST_POSTS, FOLLOWING, FOR_YOU }
  static int checks;
  static boolean building;
  static class Lazy { Object layout=new Object(); String[] keys; String key; int index,offset,requests,offsetError,requestedIndex,requestedOffset; boolean moving,ignoreRequest;
@@ -119,6 +119,23 @@ public class Fixture {
    race.keys=new String[]{"new","a","b"};race.key="new";race.ignoreRequest=false;
    ListPositionRuntime.render(race,race.keys);steps(8);check(race.index==2 && race.offset==44 && race.requests==2);
    ListPositionRuntime.pause(race);
+   // Home refresh keeps its visible post, but leaves X's process-restart store untouched.
+   Object homeFlow=new Object();ListPositionRuntime.register(homeFlow,Type.FOR_YOU,"home",1);
+   Lazy home=new Lazy("head","old","tail");ListPositionRuntime.captureBuilder(new Builder(home,home.keys));
+   ListPositionRuntime.bind(homeFlow,home);steps(3);
+   home.index=1;home.key="old";home.offset=31;steps(12);
+   String[] homeNext={"new","head","old","tail"};
+   ListPositionRuntime.captureBuilder(new Builder(home,homeNext));home.keys=homeNext;home.index=0;home.key="new";home.offset=0;
+   steps(8);check(home.requests==1 && home.index==2 && home.offset==31);
+   ListPositionRuntime.pause(home);
+   Lazy homeAgain=new Lazy(homeNext);ListPositionRuntime.captureBuilder(new Builder(homeAgain,homeNext));
+   ListPositionRuntime.bind(homeFlow,homeAgain);steps(8);
+   check(homeAgain.requests==1 && homeAgain.index==2 && homeAgain.offset==31);
+   check(app.morphe.extension.shared.Utils.getContext().getSharedPreferences("piko_newx_list_anchors_v2",0)
+     .getString("home:1.key",null)==null);
+   ListPositionRuntime.top(homeFlow);ListPositionRuntime.pause(homeAgain);
+   Lazy homeTop=new Lazy(homeNext);ListPositionRuntime.captureBuilder(new Builder(homeTop,homeNext));
+   ListPositionRuntime.bind(homeFlow,homeTop);steps(8);check(homeTop.requests==0);ListPositionRuntime.pause(homeTop);
    check(!ListPositionRuntime.pack("r","a:b","c").equals(ListPositionRuntime.pack("r","a","b:c")));
    System.out.println("Runtime lifecycle/race checks passed: "+checks);
  } }''',

@@ -8,13 +8,16 @@ import android.os.SystemClock;
 import android.util.Log;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
 import app.morphe.extension.shared.Utils;
+import app.morphe.extension.newx.settings.SettingsRegistry;
 
 /** All native adapter bodies are replaced with verified direct bytecode accesses. */
 public final class ListPositionRuntime {
     private static final Map<Object,String> SCOPES = new WeakHashMap<>();
+    private static final Map<String,ListAnchorState.Anchor> HOME_ANCHORS = new HashMap<>();
     private static final Map<Object,Object> PROVIDERS = new WeakHashMap<>();
     private static final Map<Object,Object> BUILDERS = new WeakHashMap<>();
     private static final Map<Object,Session> ACTIVE = new WeakHashMap<>();
@@ -24,6 +27,7 @@ public final class ListPositionRuntime {
     private static boolean rendererSeen;
     private static final class Session {
         final String scope;
+        final boolean home;
         final ListAnchorState state;
         Object provider, builtBuilder;
         long lastWrite;
@@ -34,14 +38,20 @@ public final class ListPositionRuntime {
         long requestedAt;
         int writtenOffset = -1;
         boolean loggedRender, loggedMissingProvider, loggedMissingSnapshot, loggedSnapshot, loggedCount;
-        Session(String scope) { this.scope=scope; state=new ListAnchorState(load(scope)); }
+        Session(String scope) {
+            this.scope=scope; home=scope.startsWith("home:");
+            state=new ListAnchorState(home ? HOME_ANCHORS.get(scope) : load(scope));
+        }
     }
     private ListPositionRuntime() {}
     public static void register(Object flow, Enum<?> type, String id, long account) {
         if (flow == null) return;
         synchronized (SCOPES) {
-            if (ListReadingPosition.restore(type,id) != null && id != null && !id.isEmpty() && account > 0)
+            if (account > 0 && ListReadingPosition.active(type,id))
                 SCOPES.put(flow,account+":"+id.length()+":"+id);
+            else if (account > 0 && type != null && "FOR_YOU".equals(type.name()) &&
+                SettingsRegistry.getBooleanOrDefault("newx.timeline.restore_position",true))
+                SCOPES.put(flow,"home:"+account);
             else SCOPES.remove(flow);
         }
     }
@@ -134,7 +144,8 @@ public final class ListPositionRuntime {
             session.userTopPending=true;
             session.writtenKey=null; session.writtenOffset=-1; trace("user-top",session);
         }
-        try { SharedPreferences p=preferences(); if(p!=null) p.edit().remove(scope+".key").remove(scope+".offset").apply(); }
+        if(scope.startsWith("home:")) HOME_ANCHORS.remove(scope);
+        else try { SharedPreferences p=preferences(); if(p!=null) p.edit().remove(scope+".key").remove(scope+".offset").apply(); }
         catch(RuntimeException ignored) {}
     }
     private static void schedule() {
@@ -250,8 +261,11 @@ public final class ListPositionRuntime {
             (a.key.equals(session.writtenKey) && a.offset==session.writtenOffset)) return;
         long now=SystemClock.uptimeMillis(); if(!force && now-session.lastWrite<700) return;
         try {
-            SharedPreferences p=preferences(); if(p==null) return;
-            p.edit().putString(session.scope+".key",a.key).putInt(session.scope+".offset",a.offset).apply();
+            if(session.home) HOME_ANCHORS.put(session.scope,a);
+            else {
+                SharedPreferences p=preferences(); if(p==null) return;
+                p.edit().putString(session.scope+".key",a.key).putInt(session.scope+".offset",a.offset).apply();
+            }
             session.writtenKey=a.key; session.writtenOffset=a.offset; session.lastWrite=now;
         } catch(RuntimeException ignored) {}
     }

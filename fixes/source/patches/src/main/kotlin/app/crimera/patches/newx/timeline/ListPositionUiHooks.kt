@@ -340,7 +340,7 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
         invoke-interface {v0}, $identityGet
         move-result-object v0
         iget-object v0, v0, $identityField
-        invoke-static {v1, v0}, Lapp/morphe/extension/newx/timeline/ListReadingPosition;->active(Ljava/lang/Enum;$STR)Z
+        invoke-static {v1, v0}, Lapp/morphe/extension/newx/timeline/ListReadingPosition;->suppressServerTop(Ljava/lang/Enum;$STR)Z
         move-result v0
         if-eqz v0, :native
         sget-object v0, $unit

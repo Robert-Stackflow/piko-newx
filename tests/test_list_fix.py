@@ -27,6 +27,8 @@ class ListFixTests(unittest.TestCase):
         source = (ROOT / "fixes/source/patches/src/main/kotlin/app/crimera/patches/newx/timeline/ListPositionUiHooks.kt").read_text(encoding="utf-8")
         self.assertNotIn("timelineDraw.addInstructions(0", source)
         self.assertNotIn("renderer.addInstructions(0", source)
+        self.assertEqual(source.count("->suppressServerTop("), 1)
+        self.assertEqual(source.count("->active("), 1)
 
     @unittest.skipUnless(os.getenv("PIKO_TEST_SOURCE"), "Needs pinned upstream checkout")
     def test_overlay_targets_are_additive_and_pinned(self):
@@ -84,11 +86,14 @@ public class ListFixTest {
     check(Arrays.equals(ListReadingPosition.restore(T.LIST_POSTS,"LIST_POSTS3"),new int[]{0,0}));
     check(ListReadingPosition.restore(T.FOLLOWING,"LIST_POSTS1")==null);
     check(!ListReadingPosition.save(T.FOR_YOU,"LIST_POSTS1",0,0));
+    check(ListReadingPosition.suppressServerTop(T.FOR_YOU,"home"));
+    check(ListReadingPosition.restore(T.FOR_YOU,"home")==null);
     check(ListReadingPosition.save(T.LIST_POSTS,"LIST_POSTS1",-1,0));
     check(Arrays.equals(ListReadingPosition.restore(T.LIST_POSTS,"LIST_POSTS1"),new int[]{0,0}));
     SettingsRegistry.values.put("newx.timeline.restore_position",false);
     check(ListReadingPosition.restore(T.LIST_POSTS,"LIST_POSTS1")==null);
     check(!ListReadingPosition.save(T.LIST_POSTS,"LIST_POSTS1",0,0));
+    check(!ListReadingPosition.suppressServerTop(T.FOR_YOU,"home"));
     SettingsRegistry.values.put("newx.timeline.list_reading_position",false);
     check(!ListReadingPosition.enabled(T.LIST_POSTS));
     SettingsRegistry.values.clear();

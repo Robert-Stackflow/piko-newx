@@ -13,6 +13,10 @@ public final class ListReadingPosition {
         return enabled(type) && id != null && !id.isEmpty()
             && SettingsRegistry.getBooleanOrDefault("newx.timeline.restore_position",true);
     }
+    public static boolean suppressServerTop(Enum<?> type, String id) {
+        return active(type,id) || type != null && "FOR_YOU".equals(type.name())
+            && SettingsRegistry.getBooleanOrDefault("newx.timeline.restore_position",true);
+    }
     public static int[] restore(Enum<?> type, String id) {
         // Returning neutral position also disables native initial ordinal restoration.
         return active(type,id) ? new int[]{0,0} : null;
