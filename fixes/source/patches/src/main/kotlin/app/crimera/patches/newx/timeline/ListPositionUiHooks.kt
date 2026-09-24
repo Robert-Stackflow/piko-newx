@@ -115,8 +115,9 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
     val timelineDraw = Fingerprint(definingClass="Lcom/x/urt/ui/",returnType="V").scopedMatchAll()
         .map { it.method }.filter { m -> m.calls().any { it.definingClass==rendererClass.type && it.name=="<init>" } }
         .unique("timeline draw containing final builder")
-    timelineDraw.addInstructions(0,"const-string v0, \"timeline-draw\"\ninvoke-static {v0}, $UI_RUNTIME->traceEntry($STR)V")
-    renderer.addInstructions(0,"const-string v0, \"renderer-entry\"\ninvoke-static {v0}, $UI_RUNTIME->traceEntry($STR)V")
+    // No register is modified here: entry-time v0 is live in the X 12.28 renderer.
+    timelineDraw.addInstructions(0,"invoke-static {}, $UI_RUNTIME->traceTimelineDraw()V")
+    renderer.addInstructions(0,"invoke-static {}, $UI_RUNTIME->traceRendererEntry()V")
     val rendererState = rendererClass.fields.filter { it.type == lazy.type }.unique("builder lazy state")
     val scopeType = renderer.instructions.mapNotNull { it.getReference<MethodReference>() }.filter {
         it.name != "<init>" && it.definingClass.startsWith("Landroidx/compose/foundation/lazy/") &&

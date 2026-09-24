@@ -22,15 +22,17 @@ public final class ListPositionRuntime {
     private static boolean scheduled;
     private static boolean rendererSeen;
     private static boolean timelineDrawSeen, rendererEntrySeen;
-    public static void traceEntry(String which) {
-        if ("timeline-draw".equals(which)) {
-            if (timelineDrawSeen) return;
+    public static void traceTimelineDraw() {
+        if (!timelineDrawSeen) {
             timelineDrawSeen = true;
-        } else {
-            if (rendererEntrySeen) return;
-            rendererEntrySeen = true;
+            Log.d("PikoListAnchor", "timeline-draw");
         }
-        Log.d("PikoListAnchor", which);
+    }
+    public static void traceRendererEntry() {
+        if (!rendererEntrySeen) {
+            rendererEntrySeen = true;
+            Log.d("PikoListAnchor", "renderer-entry");
+        }
     }
     private static final class Session {
         final String scope;
