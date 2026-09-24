@@ -16,8 +16,11 @@ public final class ListReadingPosition {
             && SettingsRegistry.getBooleanOrDefault("newx.timeline.restore_position",true);
     }
     public static int[] restore(Enum<?> type, String id) {
-        if (type != null && "FOR_YOU".equals(type.name()) && forYouRestoreTraces++ < 8)
-            Log.d("PikoListAnchor", "for-you-position-getter");
+        if (type != null && "FOR_YOU".equals(type.name()) && forYouRestoreTraces++ < 8) {
+            int[] saved = TimelineScrollPositionStore.restore(type, id);
+            Log.d("PikoListAnchor", saved == null ? "for-you-position-getter persisted=none"
+                : "for-you-position-getter persisted=" + saved[0] + "," + saved[1]);
+        }
         // Returning neutral position also disables native initial ordinal restoration.
         return active(type,id) ? new int[]{0,0} : null;
     }

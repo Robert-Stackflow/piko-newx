@@ -23,12 +23,10 @@ class ListFixTests(unittest.TestCase):
         self.assertIn("if-nez v0, :restore\n            const/4 v0, 0x0\n            return-object v0\n            :restore", source)
         self.assertNotIn("if-eqz v0, :done", source)
 
-    def test_entry_diagnostics_do_not_clobber_live_renderer_registers(self):
+    def test_renderer_entry_is_not_instrumented(self):
         source = (ROOT / "fixes/source/patches/src/main/kotlin/app/crimera/patches/newx/timeline/ListPositionUiHooks.kt").read_text(encoding="utf-8")
-        self.assertIn('timelineDraw.addInstructions(0,"invoke-static {}, $UI_RUNTIME->traceTimelineDraw()V")', source)
-        self.assertIn('renderer.addInstructions(0,"invoke-static {}, $UI_RUNTIME->traceRendererEntry()V")', source)
-        self.assertNotIn('const-string v0, "timeline-draw"', source)
-        self.assertNotIn('const-string v0, "renderer-entry"', source)
+        self.assertNotIn("timelineDraw.addInstructions(0", source)
+        self.assertNotIn("renderer.addInstructions(0", source)
 
     @unittest.skipUnless(os.getenv("PIKO_TEST_SOURCE"), "Needs pinned upstream checkout")
     def test_overlay_targets_are_additive_and_pinned(self):
@@ -68,6 +66,10 @@ public class Utils {
 public class SettingsRegistry {
   public static final java.util.Map<String,Boolean> values = new java.util.HashMap<>();
   public static boolean getBooleanOrDefault(String k,boolean d) { return values.getOrDefault(k,d); }
+}''',
+            "app/morphe/extension/newx/timeline/TimelineScrollPositionStore.java": '''package app.morphe.extension.newx.timeline;
+public class TimelineScrollPositionStore {
+  public static int[] restore(Enum<?> type,String id) { return null; }
 }''',
             "ListFixTest.java": '''import java.util.*;
 import app.morphe.extension.newx.timeline.ListReadingPosition;

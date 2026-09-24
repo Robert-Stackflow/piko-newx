@@ -21,19 +21,6 @@ public final class ListPositionRuntime {
     private static Handler handler;
     private static boolean scheduled;
     private static boolean rendererSeen;
-    private static boolean timelineDrawSeen, rendererEntrySeen;
-    public static void traceTimelineDraw() {
-        if (!timelineDrawSeen) {
-            timelineDrawSeen = true;
-            Log.d("PikoListAnchor", "timeline-draw");
-        }
-    }
-    public static void traceRendererEntry() {
-        if (!rendererEntrySeen) {
-            rendererEntrySeen = true;
-            Log.d("PikoListAnchor", "renderer-entry");
-        }
-    }
     private static final class Session {
         final String scope;
         final ListAnchorState state;

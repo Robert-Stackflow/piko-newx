@@ -41,6 +41,7 @@ public class Handler { static java.util.Queue<Runnable> q=new java.util.ArrayDeq
  public Editor remove(String k){p.remove(k);return this;} public void apply(){} } }''',
             'app/morphe/extension/shared/Utils.java': 'package app.morphe.extension.shared; public class Utils { static android.content.Context c=new android.content.Context(); public static android.content.Context getContext(){return c;} }',
             'app/morphe/extension/newx/settings/SettingsRegistry.java': 'package app.morphe.extension.newx.settings; public class SettingsRegistry { public static boolean getBooleanOrDefault(String k,boolean d){return d;} }',
+            PACKAGE+'TimelineScrollPositionStore.java': 'package app.morphe.extension.newx.timeline; public class TimelineScrollPositionStore { public static int[] restore(Enum<?> t,String id){return null;} }',
             PACKAGE+'Fixture.java': '''package app.morphe.extension.newx.timeline;
 public class Fixture {
  enum Type { LIST_POSTS, FOLLOWING }
