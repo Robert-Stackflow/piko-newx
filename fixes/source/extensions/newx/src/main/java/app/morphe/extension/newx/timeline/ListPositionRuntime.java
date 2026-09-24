@@ -21,6 +21,17 @@ public final class ListPositionRuntime {
     private static Handler handler;
     private static boolean scheduled;
     private static boolean rendererSeen;
+    private static boolean timelineDrawSeen, rendererEntrySeen;
+    public static void traceEntry(String which) {
+        if ("timeline-draw".equals(which)) {
+            if (timelineDrawSeen) return;
+            timelineDrawSeen = true;
+        } else {
+            if (rendererEntrySeen) return;
+            rendererEntrySeen = true;
+        }
+        Log.d("PikoListAnchor", which);
+    }
     private static final class Session {
         final String scope;
         final ListAnchorState state;

@@ -112,6 +112,11 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
     val renderer = Fingerprint(definingClass="Lcom/x/urt/ui/",name="invoke",returnType=OBJ,
         strings=listOf("timeline_header_key","timeline_footer_key")).requireSingle("final lazy items builder").method
     val rendererClass = context.mutableClassDefBy(renderer.definingClass)
+    val timelineDraw = Fingerprint(definingClass="Lcom/x/urt/ui/",returnType="V").scopedMatchAll()
+        .map { it.method }.filter { m -> m.calls().any { it.definingClass==rendererClass.type && it.name=="<init>" } }
+        .unique("timeline draw containing final builder")
+    timelineDraw.addInstructions(0,"const-string v0, \"timeline-draw\"\ninvoke-static {v0}, $UI_RUNTIME->traceEntry($STR)V")
+    renderer.addInstructions(0,"const-string v0, \"renderer-entry\"\ninvoke-static {v0}, $UI_RUNTIME->traceEntry($STR)V")
     val rendererState = rendererClass.fields.filter { it.type == lazy.type }.unique("builder lazy state")
     val scopeType = renderer.instructions.mapNotNull { it.getReference<MethodReference>() }.filter {
         it.name != "<init>" && it.definingClass.startsWith("Landroidx/compose/foundation/lazy/") &&
