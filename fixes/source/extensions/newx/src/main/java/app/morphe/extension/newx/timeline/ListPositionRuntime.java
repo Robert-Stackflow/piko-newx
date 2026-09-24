@@ -70,11 +70,11 @@ public final class ListPositionRuntime {
         }
     }
     public static void render(Object lazy,Object provider) {
-        if(Looper.myLooper()!=Looper.getMainLooper()) return;
         if(!rendererSeen) {
             rendererSeen=true;
-            Log.d("PikoListAnchor","renderer-observed");
+            Log.d("PikoListAnchor",Looper.myLooper()==Looper.getMainLooper()?"renderer-main":"renderer-background");
         }
+        if(Looper.myLooper()!=Looper.getMainLooper()) return;
         // Called inside Compose's derived item-provider calculation. NEVER read snapshots here:
         // provider -> layoutInfo -> provider is a cyclic dependency and can freeze the main thread.
         PROVIDERS.put(lazy,new WeakReference<>(provider));
