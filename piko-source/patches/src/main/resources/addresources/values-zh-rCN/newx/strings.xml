@@ -81,7 +81,7 @@
     <string name="piko_newx_media_tab_default_title">默认媒体标签页</string>
     <string name="piko_newx_media_tab_default_summary">打开个人资料的媒体页时，默认显示的子标签页</string>
     <string name="piko_newx_force_highest_video_quality_title">强制使用最高音视频质量</string>
-    <string name="piko_newx_force_highest_video_quality_summary">以可用的最高质量播放音视频，不自动降低画质或限制网络码率</string>
+    <string name="piko_newx_force_highest_video_quality_summary">选择设备支持的最高播放码率并解除音视频码率上限，可能增加流量和缓冲。修改后请重启，不影响下载质量。</string>
     <string name="piko_newx_disable_video_scrolling_title">禁用视频滑动切换</string>
     <string name="piko_newx_disable_video_scrolling_summary">防止在 NewX 播放器中上下滑动时切换到下一个视频</string>
     <string name="piko_newx_media_tab_photos">照片</string>
