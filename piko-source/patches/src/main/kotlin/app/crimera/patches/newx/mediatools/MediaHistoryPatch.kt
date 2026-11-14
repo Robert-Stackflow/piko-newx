@@ -1,0 +1,565 @@
+package app.crimera.patches.newx.mediatools
+
+import app.crimera.patches.newx.utils.unsupportedOnMount
+
+import app.crimera.patches.newx.models.*
+import app.crimera.patches.newx.settings.*
+import app.crimera.patches.settings.choice
+import app.crimera.patches.settings.settingStrings
+import app.crimera.patches.newx.timeline.postfilter.newXTimelineTextModelAdapterPatch
+import app.crimera.patches.newx.utils.Constants.TIMELINE_FILTER_DESCRIPTOR
+import app.crimera.patches.newx.utils.Constants.COMPATIBILITY_NEW_X
+import app.crimera.patches.utils.scopedMatchAll
+import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.instructions
+import app.morphe.patcher.patch.*
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
+import app.morphe.patcher.util.getReference
+import app.morphe.patcher.util.registersUsed
+import com.android.tools.smali.dexlib2.AccessFlags
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.builder.MethodImplementationBuilder
+import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.reference.FieldReference
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.StringReference
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+
+private const val RUNTIME = "Lapp/morphe/extension/newx/mediatools/MediaHistoryRuntime;"
+private const val OBJ = "Ljava/lang/Object;"
+private const val STR = "Ljava/lang/String;"
+private fun <T> List<T>.one(label: String): T = singleOrNull()
+    ?: throw PatchException("Media history: expected one $label, got $size: ${joinToString()}")
+private fun MutableMethod.refs() = instructions.mapNotNull { it.getReference<MethodReference>() }
+private fun MutableMethod.fields() = instructions.mapNotNull { it.getReference<FieldReference>() }.distinctBy { it.toString() }
+
+@Suppress("unused")
+val mediaHistoryPatch = bytecodePatch(
+    name = "NewX: Local post and video history",
+    description = "Private history of opened posts, photo galleries and foreground video pages, including video swipes.",
+) {
+    unsupportedOnMount()
+    compatibleWith(COMPATIBILITY_NEW_X)
+    dependsOn(newXTimelineTextModelAdapterPatch, newXPostMediaModelResolutionPatch, mediaHeaderPatch)
+    newXCustomScreen(id = "newx.media_tools.downloads", category = Categories.POST_ACTIONS_MEDIA,
+        strings = settingStrings("piko_newx_tools_downloads"), order = 509,
+        fragmentClassDescriptor = "Lapp/morphe/extension/newx/mediatools/DownloadsFragment;")
+    newXCustomScreen(id = "newx.media_tools.history", category = Categories.POST_ACTIONS_MEDIA,
+        strings = settingStrings("piko_newx_tools_history"), order = 510,
+        fragmentClassDescriptor = "Lapp/morphe/extension/newx/mediatools/HistoryFragment;")
+    newXToggle(id = "newx.media_tools.history_enabled", category = Categories.POST_ACTIONS_MEDIA,
+        strings = settingStrings("piko_newx_tools_history_enabled"), order = 511, defaultValue = false)
+    newXToggle(id = "newx.media_tools.resume_video", category = Categories.POST_ACTIONS_MEDIA,
+        strings = settingStrings("piko_newx_tools_resume_video"), order = 513, defaultValue = false)
+    newXToggle(id = "newx.media_tools.touch_lock", category = Categories.POST_ACTIONS_MEDIA,
+        strings = settingStrings("piko_newx_tools_touch_lock"), order = 514, defaultValue = false)
+    newXSingleChoice(id = "newx.media_tools.history_days", category = Categories.POST_ACTIONS_MEDIA,
+        strings = settingStrings("piko_newx_tools_history_days"), order = 512, defaultValue = "30",
+        options = listOf(choice("7", "piko_newx_tools_days_7"), choice("30", "piko_newx_tools_days_30"),
+            choice("90", "piko_newx_tools_days_90")))
+    execute {
+        val runtime = mutableClassDefBy(RUNTIME)
+        fun bridge(name: String, registers: Int, body: String) {
+            val old = runtime.methods.filter { it.name == name }.one("bridge $name")
+            val method = MutableMethod(ImmutableMethod(runtime.type, name, old.parameters, old.returnType, old.accessFlags,
+                old.annotations, old.hiddenApiRestrictions, MethodImplementationBuilder(registers).methodImplementation))
+            method.addInstructionsWithLabels(0, body.trimIndent())
+            runtime.methods.remove(old); runtime.methods.add(method)
+        }
+        fun expose(field: FieldReference) { mutableClassDefBy(field.definingClass).requirePublicFields(listOf(field)) }
+        val models = resolvedNewXTimelineModels()
+        val mediaModels = resolvedNewXPostMediaModels()
+        val postModels = mediaModels.postModels
+        val original = mutableClassDefBy(TIMELINE_FILTER_DESCRIPTOR)
+        for (name in listOf("isTimelinePost", "isTimelineModule", "isTimelineModuleItem", "getModuleItem",
+            "getModuleInnerContent", "getPostText", "getPostAuthorScreenName")) {
+            val from = original.methods.filter { it.name == name }.one("model $name")
+            val to = runtime.methods.filter { it.name == name &&
+                it.parameterTypes.map(CharSequence::toString) == from.parameterTypes.map(CharSequence::toString) &&
+                it.returnType == from.returnType }.one("model target $name (${from.parameterTypes})${from.returnType}")
+            runtime.methods.remove(to)
+            runtime.methods.add(MutableMethod(ImmutableMethod(runtime.type, name, to.parameters, to.returnType, to.accessFlags,
+                to.annotations, to.hiddenApiRestrictions, from.implementation)))
+        }
+        val focal = Fingerprint(definingClass = "Lcom/x/postdetail/", returnType = models.postIdGetter.returnType,
+            strings = listOf("Focal post id read before the timeline exists")).requireSingle("post detail focal ID")
+        val detail = mutableClassDefBy(focal.originalClassDef.type)
+        val focalField = focal.method.fields().filter { it.type == models.postIdGetter.returnType }.one("focal ID field")
+        val idField = mutableClassDefBy(focalField.type).fields.filter { it.type == "J" && !AccessFlags.STATIC.isSet(it.accessFlags) }.one("numeric post ID")
+        expose(focalField); expose(idField)
+        bridge("postId", 3, """
+            check-cast p0, ${models.postDescriptor}
+            invoke-virtual {p0}, ${models.postIdGetter}
+            move-result-object p0
+            if-eqz p0, :none
+            iget-wide v0, p0, $idField
+            invoke-static {v0, v1}, Ljava/lang/Long;->toString(J)$STR
+            move-result-object p0
+            return-object p0
+            :none
+            const/4 p0, 0x0
+            return-object p0
+        """)
+        bridge("focalPostId", 3, """
+            check-cast p0, ${detail.type}
+            iget-object p0, p0, $focalField
+            if-eqz p0, :none
+            iget-wide v0, p0, $idField
+            invoke-static {v0, v1}, Ljava/lang/Long;->toString(J)$STR
+            move-result-object p0
+            return-object p0
+            :none
+            const/4 p0, 0x0
+            return-object p0
+        """)
+
+        val selected = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString",
+            strings = listOf("CurrentMediaChanged(mediaId=")).requireSingle("current-media selection")
+        val selectionField = selected.originalClassDef.fields.filter { it.type == STR }.one("selected media ID")
+        expose(selectionField)
+        val eventInterface = selected.originalClassDef.interfaces.toList().one("video event interface")
+        val page = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString", strings = listOf("PageChanged(page="))
+            .scopedMatchAll().filter { eventInterface in it.originalClassDef.interfaces }.one("current viewer page event")
+        val pageField = page.originalClassDef.fields.filter { it.type == "I" }.one("page event index")
+        expose(pageField)
+        bridge("videoPageEventIndex", 1,
+            "check-cast p0, ${page.originalClassDef.type}\niget p0, p0, $pageField\nreturn p0")
+        val dispatcher = Fingerprint(definingClass = "Lcom/x/video/tab/", returnType = "V", parameters = listOf(eventInterface))
+            .scopedMatchAll().map { it.method }.filter { m -> m.fields().any { it.toString() == selectionField.toString() } &&
+                m.fields().any { it.toString() == pageField.toString() } }.one("viewer event dispatcher")
+        val video = mutableClassDefBy(dispatcher.definingClass)
+        val items = video.methods.filter { it.parameterTypes.isEmpty() && it.returnType == "Ljava/util/ArrayList;" }.one("displayed video items")
+        val pageWrites = dispatcher.instructions.withIndex().mapNotNull { (i, op) ->
+            if (op.opcode != Opcode.IGET || op.getReference<FieldReference>()?.toString() != pageField.toString()) return@mapNotNull null
+            val pair = dispatcher.instructions.drop(i + 1).take(2)
+            if (pair.size != 2 || pair.any { it.opcode != Opcode.IPUT || (it as TwoRegisterInstruction).registerA != (op as TwoRegisterInstruction).registerA }) return@mapNotNull null
+            pair.first().getReference<FieldReference>()
+        }
+        if (pageWrites.size == 1) {
+            val currentPage = pageWrites.single()
+            if (currentPage.definingClass != video.type || currentPage.type != "I")
+                throw PatchException("Media history: invalid current-page owner")
+            expose(currentPage)
+            bridge("videoPage", 1, "check-cast p0, ${video.type}\niget p0, p0, $currentPage\nreturn p0")
+        } else if (Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString",
+                strings = listOf("PageScrollAdvanced(page="))
+                .scopedMatchAll().isNotEmpty()) {
+            // 12.43 separates the foreground PageChanged event from the event that
+            // commits the page index. The runtime uses the foreground event index
+            // immediately and this committed value for later media-selection events.
+            val advanced = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString",
+                strings = listOf("PageScrollAdvanced(page="))
+                .scopedMatchAll().filter { eventInterface in it.originalClassDef.interfaces }
+                .one("advanced page event")
+            val advancedField = advanced.originalClassDef.fields.filter { it.type == "I" }
+                .one("advanced page index")
+            val committed = dispatcher.instructions.withIndex().mapNotNull { (i, op) ->
+                if (op.opcode != Opcode.IGET || op.getReference<FieldReference>()?.toString() != advancedField.toString())
+                    return@mapNotNull null
+                dispatcher.instructions.drop(i + 1).take(3).firstNotNullOfOrNull { next ->
+                    next.getReference<FieldReference>()?.takeIf { next.opcode == Opcode.IPUT &&
+                        it.definingClass == video.type && it.type == "I" }
+                }
+            }.distinctBy { it.toString() }.one("committed video page index")
+            expose(committed)
+            bridge("videoPage", 1, "check-cast p0, ${video.type}\niget p0, p0, $committed\nreturn p0")
+        } else {
+            // X 12.28 stores the current pager index in a viewer-owned state object.
+            val eventRead = dispatcher.instructions.withIndex().filter { (_, op) ->
+                op.opcode == Opcode.IGET && op.getReference<FieldReference>()?.toString() == pageField.toString()
+            }.one("new viewer page event read")
+            val following = dispatcher.instructions.drop(eventRead.index + 1).take(14)
+            val owner = following.mapNotNull { op ->
+                if (op.opcode != Opcode.IGET_OBJECT) return@mapNotNull null
+                op.getReference<FieldReference>()?.takeIf { it.definingClass == video.type && it.type.startsWith("Lcom/x/video/tab/") }
+            }.distinctBy { it.toString() }
+            val pageOwner = owner.one("new viewer page-state owner")
+            val currentPage = following.mapNotNull { op ->
+                if (op.opcode != Opcode.IGET) return@mapNotNull null
+                op.getReference<FieldReference>()?.takeIf { it.definingClass == pageOwner.type && it.type == "I" &&
+                    following.any { later -> later.opcode == Opcode.IPUT &&
+                        later.getReference<FieldReference>()?.toString() == it.toString() } }
+            }.distinctBy { it.toString() }.one("new viewer committed page index")
+            expose(pageOwner); expose(currentPage)
+            bridge("videoPage", 1, """
+                check-cast p0, ${video.type}
+                iget-object p0, p0, $pageOwner
+                if-nez p0, :present
+                const/4 p0, -0x1
+                return p0
+                :present
+                iget p0, p0, $currentPage
+                return p0
+            """)
+        }
+        bridge("videoItems", 1, "check-cast p0, ${video.type}\ninvoke-virtual {p0}, $items\nmove-result-object p0\nreturn-object p0")
+        bridge("isVideoPageEvent", 1, "instance-of p0, p0, ${page.originalClassDef.type}\nreturn p0")
+        bridge("isMediaSelectionEvent", 1, "instance-of p0, p0, ${selected.originalClassDef.type}\nreturn p0")
+        bridge("selectionMediaId", 1, "check-cast p0, ${selected.originalClassDef.type}\niget-object p0, p0, $selectionField\nreturn-object p0")
+
+        val successItems = items.fields().filter { it.definingClass.startsWith("Lcom/x/urt/") && it.type.startsWith("Lkotlinx/collections/immutable/") }.one("success items")
+        val detailSuccess = detail.fields.filter { it.type == successItems.definingClass }.one("detail success state")
+        expose(successItems); expose(detailSuccess)
+        bridge("detailItems", 1, """
+            check-cast p0, ${detail.type}
+            iget-object p0, p0, $detailSuccess
+            if-eqz p0, :none
+            iget-object p0, p0, $successItems
+            return-object p0
+            :none
+            const/4 p0, 0x0
+            return-object p0
+        """)
+        fun accountField(owner: String): FieldReference = mutableClassDefBy(owner).fields.filter { field ->
+            field.type.startsWith("Lcom/x/models/") && runCatching {
+                mutableClassDefBy(field.type).methods.any { m -> m.name == "<init>" && m.parameterTypes.map(CharSequence::toString) == listOf(STR) &&
+                    m.refs().any { it.toString() == "Ljava/lang/Long;->parseLong(Ljava/lang/String;)J" } }
+            }.getOrDefault(false)
+        }.one("account in $owner")
+        val detailAccount = accountField(detail.type)
+        val accountId = mutableClassDefBy(detailAccount.type).fields.filter { it.type == "J" && !AccessFlags.STATIC.isSet(it.accessFlags) }.one("numeric account ID")
+        val wrapper = items.fields().filter { it.definingClass == video.type && it.type.startsWith("Lcom/x/video/tab/") }.one("video timeline wrapper")
+        val timeline = mutableClassDefBy(wrapper.type).fields.filter { it.type.startsWith("Lcom/x/urt/") &&
+            runCatching { accountField(it.type) }.isSuccess }.one("video account owner")
+        val videoAccount = accountField(timeline.type)
+        if (videoAccount.type != detailAccount.type) throw PatchException("Media history: account identity types disagree")
+        listOf(detailAccount, accountId, wrapper, timeline, videoAccount).forEach(::expose)
+        bridge("postAccount", 3, """
+            check-cast p0, ${detail.type}
+            iget-object p0, p0, $detailAccount
+            iget-wide v0, p0, $accountId
+            return-wide v0
+        """)
+        bridge("videoAccount", 3, """
+            check-cast p0, ${video.type}
+            iget-object p0, p0, $wrapper
+            iget-object p0, p0, $timeline
+            iget-object p0, p0, $videoAccount
+            iget-wide v0, p0, $accountId
+            return-wide v0
+        """)
+        // Photos opened directly from a timeline use a separate gallery, not post detail.
+        // Resolve its live observed-post state, never its loader/prefetch or click handlers.
+        val galleryState = Fingerprint(definingClass = "Lcom/x/media/", name = "toString",
+            strings = listOf("MediaGalleryState(owner=", ", observedPost=")).requireSingle("gallery presentation state").originalClassDef
+        val galleryConstructor = Fingerprint(definingClass = "Lcom/x/media/", name = "<init>")
+            .scopedMatchAll().map { it.method }.filter { method ->
+                method.refs().any { it.definingClass == galleryState.type && it.name == "<init>" }
+            }.one("gallery component constructor owning presentation state")
+        val gallery = mutableClassDefBy(galleryConstructor.definingClass)
+        val galleryStateWriter = gallery.methods.filter { method -> method.returnType == "V" && method.parameterTypes.isEmpty() &&
+            method.refs().any { it.definingClass == galleryState.type && it.returnType == galleryState.type }
+        }.one("gallery observed-post state updater")
+        val galleryFlow = galleryStateWriter.fields().filter { it.definingClass == gallery.type &&
+            it.type.startsWith("Lkotlinx/coroutines/flow/") }.one("gallery live state flow")
+        val galleryValue = galleryStateWriter.refs().filter { it.definingClass == galleryFlow.type &&
+            it.name == "getValue" && it.parameterTypes.isEmpty() && it.returnType == OBJ }.one("gallery live state getter")
+        val galleryObserved = galleryState.fields.filter { it.type == postModels.contextualPostDescriptor }.one("gallery observed public post")
+        val galleryOwner = accountField(gallery.type)
+        if (galleryOwner.type != detailAccount.type) throw PatchException("Media history: gallery account identity type differs")
+        listOf(galleryFlow, galleryObserved, galleryOwner).forEach(::expose)
+        bridge("galleryAccount", 3, """
+            check-cast p0, ${gallery.type}
+            iget-object p0, p0, $galleryOwner
+            iget-wide v0, p0, $accountId
+            return-wide v0
+        """)
+        bridge("galleryPost", 1, """
+            check-cast p0, ${gallery.type}
+            iget-object p0, p0, $galleryFlow
+            invoke-virtual {p0}, $galleryValue
+            move-result-object p0
+            check-cast p0, ${galleryState.type}
+            if-eqz p0, :none
+            iget-object p0, p0, $galleryObserved
+            return-object p0
+            :none
+            const/4 p0, 0x0
+            return-object p0
+        """)
+        fun postDelegate(getter: MethodReference): MethodReference = mutableClassDefBy(getter.definingClass).methods
+            .filter { it.toString() == getter.toString() }.one("timeline delegate $getter").refs()
+            .filter { it.parameterTypes.isEmpty() && it.returnType == getter.returnType }.one("contextual delegate $getter")
+        val galleryIdGetter = postDelegate(models.postIdGetter)
+        val galleryTextGetter = postDelegate(models.postTextGetter)
+        bridge("galleryPostId", 3, """
+            check-cast p0, ${galleryIdGetter.definingClass}
+            invoke-interface {p0}, $galleryIdGetter
+            move-result-object p0
+            if-eqz p0, :none
+            iget-wide v0, p0, $idField
+            invoke-static {v0, v1}, Ljava/lang/Long;->toString(J)$STR
+            move-result-object p0
+            return-object p0
+            :none
+            const/4 p0, 0x0
+            return-object p0
+        """)
+        bridge("galleryText", 1, """
+            check-cast p0, ${galleryTextGetter.definingClass}
+            invoke-interface {p0}, $galleryTextGetter
+            move-result-object p0
+            return-object p0
+        """)
+        val authorAdapter = runtime.methods.filter { it.name == "getPostAuthorScreenName" }.one("post author adapter")
+        val authorField = authorAdapter.fields().filter { it.definingClass == postModels.canonicalPostDescriptor }.one("canonical post author")
+        val authorGetter = authorAdapter.refs().filter { it.parameterTypes.isEmpty() && it.returnType == STR }.one("author screen name")
+        val galleryCanonical = postModels.contextualCanonicalPostField
+        val galleryMedia = mediaModels.canonicalPostMediaField
+        listOf(galleryCanonical, galleryMedia, authorField).forEach(::expose)
+        // Capture only the two public author presentation properties, not a whole user object.
+        val minimalUser = Fingerprint(definingClass = "Lcom/x/models/", name = "toString",
+            strings = listOf("MinimalUser(id=", ", profileImageUrl=")).requireSingle("history author presentation")
+        // The label is passed to an R8 StringBuilder helper. Do not scan past a register's
+        // later reuse for another label (e.g. profile description/background image).
+        val userOps = minimalUser.method.instructions.toList()
+        val avatarLabel = userOps.withIndex().filter {
+            it.value.getReference<StringReference>()?.string == ", profileImageUrl="
+        }.one("author avatar label")
+        val labelRegister = (avatarLabel.value as? OneRegisterInstruction)?.registerA
+            ?: throw PatchException("Media history: unsupported avatar label register")
+        val appendAvatar = userOps.withIndex().drop(avatarLabel.index + 1).take(5).filter { (_, op) ->
+            op.getReference<MethodReference>()?.parameterTypes?.map(CharSequence::toString) ==
+                listOf("Ljava/lang/StringBuilder;", STR, STR, STR, STR) && op.registersUsed.getOrNull(2) == labelRegister
+        }.one("author avatar label/value append")
+        val valueRegister = appendAvatar.value.registersUsed[3]
+        val avatarField = userOps.subList(avatarLabel.index + 1, appendAvatar.index).filter {
+            it.opcode == Opcode.IGET_OBJECT && (it as TwoRegisterInstruction).registerA == valueRegister
+        }.mapNotNull { it.getReference<FieldReference>() }.filter {
+            it.definingClass == minimalUser.originalClassDef.type && it.type == STR
+        }.one("public avatar URL field")
+        val avatarGetter = mutableClassDefBy(minimalUser.originalClassDef.type).methods.filter { method ->
+            method.parameterTypes.isEmpty() && method.returnType == STR && method.refs().isEmpty() &&
+                method.fields().singleOrNull()?.toString() == avatarField.toString()
+        }.one("author avatar getter")
+        val userContract = minimalUser.originalClassDef.interfaces.map { mutableClassDefBy(it) }.filter { type ->
+            type.methods.any { it.name == "getName" && it.returnType == STR && it.parameterTypes.isEmpty() } &&
+                type.methods.any { it.name == avatarGetter.name && it.returnType == STR && it.parameterTypes.isEmpty() }
+        }.one("shared author display contract")
+        if (authorField.type != userContract.type && userContract.type !in classDefBy(authorField.type).interfaces)
+            throw PatchException("Media history: post author does not implement presentation contract")
+        bridge("postAuthor", 3, """
+            if-nez p1, :contextual
+            check-cast p0, ${models.postDescriptor}
+            iget-object p0, p0, ${models.postResultField}
+            :contextual
+            instance-of v0, p0, ${postModels.contextualPostDescriptor}
+            if-eqz v0, :none
+            check-cast p0, ${postModels.contextualPostDescriptor}
+            iget-object p0, p0, $galleryCanonical
+            if-eqz p0, :none
+            check-cast p0, ${postModels.canonicalPostDescriptor}
+            iget-object p0, p0, $authorField
+            return-object p0
+            :none
+            const/4 p0, 0x0
+            return-object p0
+        """)
+        for ((name, getterName) in listOf("authorName" to "getName", "authorAvatar" to avatarGetter.name)) {
+            val getter = userContract.methods.filter { it.name == getterName && it.returnType == STR &&
+                it.parameterTypes.isEmpty() }.one("author $name interface getter")
+            bridge(name, 1, """
+                check-cast p0, ${userContract.type}
+                invoke-interface {p0}, $getter
+                move-result-object p0
+                return-object p0
+            """)
+        }
+        bridge("galleryAuthor", 1, """
+            check-cast p0, ${postModels.contextualPostDescriptor}
+            iget-object p0, p0, $galleryCanonical
+            if-eqz p0, :none
+            check-cast p0, ${postModels.canonicalPostDescriptor}
+            iget-object p0, p0, $authorField
+            if-eqz p0, :none
+            check-cast p0, ${authorGetter.definingClass}
+            invoke-interface {p0}, $authorGetter
+            move-result-object p0
+            return-object p0
+            :none
+            const/4 p0, 0x0
+            return-object p0
+        """)
+        bridge("galleryMedia", 1, """
+            check-cast p0, ${postModels.contextualPostDescriptor}
+            iget-object p0, p0, $galleryCanonical
+            if-eqz p0, :none
+            check-cast p0, ${postModels.canonicalPostDescriptor}
+            iget-object p0, p0, $galleryMedia
+            return-object p0
+            :none
+            const/4 p0, 0x0
+            return-object p0
+        """)
+        val galleryLife = gallery.methods.filter { it.name == "getLifecycle" && it.parameterTypes.isEmpty() }.one("gallery lifecycle")
+        val galleryReturn = galleryConstructor.instructions.withIndex().filter { it.value.opcode == Opcode.RETURN_VOID }
+            .one("completed gallery construction").index
+        galleryConstructor.addInstructions(galleryReturn, "invoke-static/range {p0 .. p0}, $RUNTIME->bindGallery($OBJ)V")
+
+        val videoLife = video.methods.filter { it.name == "getLifecycle" && it.parameterTypes.isEmpty() }.one("video lifecycle")
+        val detailLife = detail.methods.filter { it.name == "getLifecycle" && it.parameterTypes.isEmpty() }.one("detail lifecycle")
+        if (videoLife.returnType != detailLife.returnType || galleryLife.returnType != detailLife.returnType)
+            throw PatchException("Media history: lifecycle contracts disagree")
+        val lifeState = mutableClassDefBy(videoLife.returnType).methods.filter { method ->
+            method.parameterTypes.isEmpty() && runCatching {
+                val candidate = mutableClassDefBy(method.returnType)
+                candidate.superclass == "Ljava/lang/Enum;" &&
+                    candidate.fields.any { it.name == "RESUMED" } && candidate.fields.any { it.name == "DESTROYED" }
+            }.getOrDefault(false)
+        }.one("lifecycle state")
+        val state = mutableClassDefBy(lifeState.returnType)
+        if (state.superclass != "Ljava/lang/Enum;" || !state.fields.any { it.name == "RESUMED" } || !state.fields.any { it.name == "DESTROYED" })
+            throw PatchException("Media history: unsupported lifecycle states")
+        bridge("lifecycle", 2, """
+            instance-of v0, p0, ${gallery.type}
+            if-eqz v0, :video
+            check-cast p0, ${gallery.type}
+            invoke-virtual {p0}, $galleryLife
+            move-result-object p0
+            goto :state
+            :video
+            instance-of v0, p0, ${video.type}
+            if-eqz v0, :detail
+            check-cast p0, ${video.type}
+            invoke-virtual {p0}, $videoLife
+            move-result-object p0
+            goto :state
+            :detail
+            check-cast p0, ${detail.type}
+            invoke-virtual {p0}, $detailLife
+            move-result-object p0
+            :state
+            invoke-interface {p0}, $lifeState
+            move-result-object p0
+            return-object p0
+        """)
+        val media = Fingerprint(definingClass = "Lcom/x/models/", name = "toString",
+            strings = listOf("MediaContentVideo(mediaId=", ", variants=")).requireSingle("video media model").originalClassDef
+        val mediaInterface = media.interfaces.toList().one("video media interface")
+        val emitter = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "emit").scopedMatchAll().map { it.method }
+            .filter { m -> m.refs().any { it.definingClass == selected.originalClassDef.type && it.name == "<init>" } }.one("current media emitter")
+        val mediaId = emitter.refs().filter { it.definingClass == mediaInterface && it.returnType == STR && it.parameterTypes.isEmpty() }.one("selected media ID getter")
+        bridge("isVideo", 1, "instance-of p0, p0, ${media.type}\nreturn p0")
+        bridge("mediaId", 1, "check-cast p0, $mediaInterface\ninvoke-interface {p0}, $mediaId\nmove-result-object p0\nreturn-object p0")
+        val playback = Fingerprint(definingClass = "Lcom/x/", name = "toString",
+            strings = listOf("ImmersivePlaybackState(progress=", ", isSeekable=")).requireSingle("viewer playback state").originalClassDef
+        val playbackConstructor = mutableClassDefBy(playback.type).methods.filter {
+            it.name == "<init>" && it.parameterTypes.map(CharSequence::toString) in listOf(
+                listOf("F", "J", "J", "Z", "Z", "F"),
+                listOf("F", "J", "J", STR, "Z", "Z", "F"),
+                listOf("F", "J", "J", STR, "Z", "Z", "F", "Lkotlin/ranges/ClosedRange;")
+            )
+        }.one("playback state constructor")
+        val hasPlaybackLabel = playbackConstructor.parameterTypes.size >= 7
+        val parameterStart = playbackConstructor.implementation!!.registerCount -
+            if (playbackConstructor.parameterTypes.size == 8) 11 else if (hasPlaybackLabel) 10 else 9
+        fun stateField(offset: Int, type: String): FieldReference = playbackConstructor.instructions.filter { op ->
+            op is TwoRegisterInstruction && op.opcode in listOf(Opcode.IPUT_WIDE, Opcode.IPUT_BOOLEAN) &&
+                op.registerA == parameterStart + offset && op.registerB == parameterStart
+        }.mapNotNull { it.getReference<FieldReference>() }.filter { it.type == type }.one("playback parameter $offset")
+        val positionField = stateField(2, "J")
+        val durationField = stateField(4, "J")
+        val seekableField = stateField(if (hasPlaybackLabel) 8 else 7, "Z")
+        listOf(positionField, durationField, seekableField).forEach(::expose)
+        val stateFlows = dispatcher.instructions.withIndex().mapNotNull { (index, op) ->
+            if (op.opcode != Opcode.CHECK_CAST || op.getReference<com.android.tools.smali.dexlib2.iface.reference.TypeReference>()?.type != playback.type) return@mapNotNull null
+            dispatcher.instructions.take(index).takeLast(5).mapNotNull { it.getReference<FieldReference>() }
+                .lastOrNull { it.definingClass == video.type && it.type.startsWith("Lkotlinx/coroutines/flow/") }
+        }.distinctBy { it.toString() }
+        val stateFlow = stateFlows.one("playback state flow")
+        expose(stateFlow)
+        val stateGet = mutableClassDefBy(stateFlow.type).methods.filter { it.name == "getValue" && it.parameterTypes.isEmpty() }.one("playback flow getter")
+        bridge("playbackState", 1, "check-cast p0, ${video.type}\niget-object p0, p0, $stateFlow\ninvoke-virtual {p0}, $stateGet\nmove-result-object p0\nreturn-object p0")
+        val millis = Fingerprint(definingClass = "Lkotlin/time/Duration;", parameters = listOf("J"), returnType = "J")
+            .scopedMatchAll().map { it.method }.filter { AccessFlags.STATIC.isSet(it.accessFlags) && it.fields().any { field -> field.name == "MILLISECONDS" } }.one("duration milliseconds decoder")
+        for ((name, field) in listOf("playbackPosition" to positionField, "playbackDuration" to durationField))
+            bridge(name, 3, "check-cast p0, ${playback.type}\niget-wide v0, p0, $field\ninvoke-static {v0, v1}, $millis\nmove-result-wide v0\nreturn-wide v0")
+        bridge("playbackSeekable", 1, "check-cast p0, ${playback.type}\niget-boolean p0, p0, $seekableField\nreturn p0")
+        val progress = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString", strings = listOf("MediaProgress(index="))
+            .scopedMatchAll().filter { eventInterface in it.originalClassDef.interfaces }.one("current viewer progress event").originalClassDef
+        val envelope = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString", strings = listOf("ProgressEvent(event="))
+            .scopedMatchAll().filter { m -> m.originalClassDef.fields.any { it.type == progress.type } }.one("current progress envelope").originalClassDef
+        val progressField = video.fields.filter { it.type == envelope.type }.one("current native progress")
+        val envelopePost = envelope.fields.filter { it.type == models.postDescriptor }.one("progress post")
+        val envelopeEvent = envelope.fields.filter { it.type == progress.type }.one("progress event")
+        val progressMedia = progress.fields.filter { it.type == mediaInterface }.one("progress media")
+        listOf(progressField, envelopePost, envelopeEvent, progressMedia).forEach(::expose)
+        bridge("progressPostId", 1, """
+            check-cast p0, ${video.type}
+            iget-object p0, p0, $progressField
+            if-eqz p0, :none
+            iget-object p0, p0, $envelopePost
+            invoke-static {p0}, $RUNTIME->postId($OBJ)$STR
+            move-result-object p0
+            return-object p0
+            :none
+            const/4 p0, 0x0
+            return-object p0
+        """)
+        bridge("progressMediaId", 1, """
+            check-cast p0, ${video.type}
+            iget-object p0, p0, $progressField
+            if-eqz p0, :none
+            iget-object p0, p0, $envelopeEvent
+            iget-object p0, p0, $progressMedia
+            invoke-interface {p0}, $mediaId
+            move-result-object p0
+            return-object p0
+            :none
+            const/4 p0, 0x0
+            return-object p0
+        """)
+        val seek = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString", strings = listOf("BarSeekTo(progress="))
+            .scopedMatchAll().filter { eventInterface in it.originalClassDef.interfaces }.one("native viewer seek event").originalClassDef
+        val seekConstructor = mutableClassDefBy(seek.type).methods.filter { it.name == "<init>" && it.parameterTypes.map(CharSequence::toString) == listOf("F") }.one("seek constructor")
+        bridge("isSeekEvent", 1, "instance-of p0, p0, ${seek.type}\nreturn p0")
+        bridge("seekVideo", 3, """
+            new-instance v0, ${seek.type}
+            invoke-direct {v0, p1}, $seekConstructor
+            check-cast p0, ${video.type}
+            invoke-virtual {p0, v0}, $dispatcher
+            return-void
+        """)
+        val result = models.postResultField
+        val canonical = postModels.contextualCanonicalPostField
+        val repost = postModels.contextualRepostedPostField
+        val repostCanonical = postModels.repostedCanonicalPostField
+        val mediaField = mediaModels.canonicalPostMediaField
+        listOf(result, canonical, repost, repostCanonical, mediaField).forEach(::expose)
+        for ((name, path) in listOf("postMedia" to "iget-object p0, p0, $canonical",
+            "repostedMedia" to "iget-object p0, p0, $repost\nif-eqz p0, :none\niget-object p0, p0, $repostCanonical")) {
+            bridge(name, 2, """
+                check-cast p0, ${models.postDescriptor}
+                iget-object p0, p0, $result
+                instance-of v0, p0, ${postModels.contextualPostDescriptor}
+                if-eqz v0, :none
+                check-cast p0, ${postModels.contextualPostDescriptor}
+                $path
+                if-eqz p0, :none
+                check-cast p0, ${postModels.canonicalPostDescriptor}
+                iget-object p0, p0, $mediaField
+                return-object p0
+                :none
+                const/4 p0, 0x0
+                return-object p0
+            """)
+        }
+        // No repository/cursor mutation: observe only detail presentation and viewer page events.
+        val detailGetter = detail.methods.singleOrNull { it.name == "getState" && it.parameterTypes.isEmpty() }
+        if (detailGetter != null) {
+            detailGetter.addInstructions(0, "invoke-static/range {p0 .. p0}, $RUNTIME->bindPost($OBJ)V")
+        } else {
+            // The 12.28 state accessor is R8-renamed. Register after construction;
+            // the runtime defers inspection until the detail view is foreground.
+            val detailConstructor = detail.methods.filter { it.name == "<init>" }.one("detail constructor")
+            val detailReady = detailConstructor.instructions.withIndex().filter { it.value.opcode == Opcode.RETURN_VOID }
+                .one("completed detail construction").index
+            detailConstructor.addInstructions(detailReady, "invoke-static/range {p0 .. p0}, $RUNTIME->bindPost($OBJ)V")
+        }
+        dispatcher.addInstructions(0, "invoke-static/range {p0 .. p1}, $RUNTIME->videoEvent($OBJ$OBJ)V")
+        println("Media history: verified foreground detail/gallery/video observers; repository, playback and pagination unchanged")
+    }
+}
