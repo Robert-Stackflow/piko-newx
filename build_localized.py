@@ -8,6 +8,7 @@ import subprocess
 import zipfile
 import sys
 from pathlib import Path
+from xml.etree import ElementTree
 
 from build_piko import pre_build_cleanup, set_project_version
 from localization.apply_localization import apply
@@ -52,8 +53,9 @@ def main():
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(ROOT / "piko-source" / relative, target)
             (source / ".source-commit").write_text(config["commit"], encoding="utf-8")
+            zh_files = (source / "patches/src/main/resources/addresources/values-zh-rCN").rglob("*.xml")
             report = {"source_mode": "vendored", "source_commit": config["commit"],
-                      "translated_resources": len(list((source / "patches/src/main/resources/addresources/values-zh-rCN").rglob("*.xml"))),
+                      "translated_resources": sum(len(ElementTree.parse(path).getroot()) for path in zh_files),
                       "fix_files": [], "feature_files": []}
         else:
             subprocess.run(["git", "init", str(source)], check=True)
@@ -71,8 +73,10 @@ def main():
                 report.update(apply_features(source))
                 report["translated_resources"] += report["feature_resources"]
         print(json.dumps(report, indent=2), flush=True)
-        # Cleanup is confined to the new generated source checkout above.
-        pre_build_cleanup(source)
+        # The current x-lite source has shared patch references across apps;
+        # removing old app packages would make it fail to compile.
+        if not vendored:
+            pre_build_cleanup(source)
         set_project_version(source, config["version"])
         (ROOT / "bins").mkdir(exist_ok=True)
         (ROOT / "bins/build-report-pending.json").write_text(json.dumps(report), encoding="utf-8")

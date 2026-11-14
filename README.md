@@ -1,60 +1,53 @@
-# Piko NewX 汉化与自定义补丁
+# Piko NewX 简体中文与自维护功能
 
-这是 [crimera/piko-newx](https://github.com/crimera/piko-newx) 的非官方 fork。当前自定义开发分支为 `codex/media-tools`；`main`、`codex/zh-cn` 与 `codex/list-scroll-fix` 不代表本分支最新功能。上游构建仓库从 [Piko x-lite](https://github.com/crimera/piko/tree/x-lite) 拉取真正的补丁源码；本仓库在编译前应用经校验的中文翻译和附加源码。
+这是 [Piko](https://github.com/crimera/piko) 的非官方定制构建。`main` 同时保存旧版构建覆盖层（`localization/`、`fixes/`、`features/`）和当前 12.43 移植源码（`piko-source/`）。当前构建以 `piko-source/` 为准；旧覆盖层只用于追溯和升级比对，**不会再叠加到当前源码**。它不是 Piko 官方发行版。
 
-候选 **dev14** 重做了列表恢复确认、自动/用户回顶来源区分，并让启用保护的列表手动刷新复用原生顶部游标；没有补回旧帖。已通过构建、签名和静态检查，见 [dev14 验证记录](docs/verification/list-position-dev14.md) 与 [位置恢复 v3](fixes/position-restoration-v3.md)。尚未安装或真机验收；下文 dev13 验证结果只属于已发布的旧包。
+构建输入由 [localization/source.json](localization/source.json) 锁定：Piko NewX 3.11.1 的自维护移植源码，目标 X `12.43.0-prod.01`。`source_mode: vendored` 表示源码直接保存在 `main`，而非在构建时临时拉取一个可能变化的分支。源码提交号和 `piko-source/` 的 Git tree 必须一致；[功能契约测试](tests/test_current_feature_contract.py) 会检查这一点。版本号、已安装 APK、补丁源码是三件不同的事，不能仅凭其中一项推断另外两项已更新。
 
-当前补丁源码锁定 Piko NewX **3.10.6**（`bc03fce4352bcb7ee89299722d0e900af3fb8a82`），中文/自定义预览版本为 **3.10.6-zh.3-media.dev13**，目标 X **12.22.0-prod.01**，以 [source.json](localization/source.json) 为准。构建仓库已 rebase 到上游 **v3.19.3**，不代表中文补丁或手机 APK 已升级到该版本。
+## 我们维护的功能
 
-## 当前功能与状态
+以下是相对上游自行维护或移植的部分，不把上游原有功能算作本项目独创：
 
-- 简体中文界面，356 条原有翻译、8 条时间线资源和 59 条媒体工具资源，共 423 条。
-- 为你推荐、正在关注、所有列表三类时间线分别控制转推展示。
-- 首页固定列表标签只展示名称。
-- 实验性列表位置恢复：按账号/列表保存测量确认的显示项身份与偏移，不补回旧帖。
-- 首页右上角更多菜单：Piko 设置、下载管理、浏览历史。
-- 下载管理和本地浏览历史使用平铺列表、媒体预览及标题栏清空操作。
-- 历史使用帖子风格的本地快照，支持头像、作者和图片/视频预览；搜索栏右侧图标循环切换全部/帖子/视频，不弹出 Toast。
-- 浏览记录覆盖帖子详情、直接打开的帖子图片，以及视频页滑动后的前台当前视频；另有视频续播和防误触预览功能。
+| 范围 | 当前实现 |
+| --- | --- |
+| 简体中文 | Piko NewX 设置及相关界面中文资源；下载、图片合并和错误状态等运行时文本也已适配。服务器返回的帖子内容不翻译。 |
+| 时间线 | “为你推荐”“正在关注”“列表”分别控制是否显示转推；首页固定列表标签只显示名称。 |
+| 阅读位置 | 按账号和列表保存帖子身份与偏移，切换列表、重启后按可见项恢复；列表刷新保留阅读锚点，“为你推荐”手动刷新使用 X 原生的视口感知刷新，以让新帖插入上方而非直接回顶。不会为恢复位置补回旧帖。 |
+| 首页入口 | 顶部更多菜单进入 Piko 设置、下载管理、浏览历史。 |
+| 下载管理 | 本地任务、重试、清空和媒体预览；页面样式尽量贴近 X。实际下载清晰度由 X 提供的媒体流和下载逻辑决定，不能承诺始终为最高质量。 |
+| 浏览历史 | 帖子详情、点击图片，以及视频页前台当前视频均可记录；视频上滑后逐条记录，预加载不计入。支持本地帖子卡片、媒体预览、搜索、全部/帖子/视频切换与清空。 |
+| 视频工具 | 独立的观看进度与返回续播记录，以及视频页标题栏的防误触图标；原有播放速度等上游能力仍由上游实现。 |
 
-列表切换和两次重启恢复已完成受控真机检查，检查期间未复现卡死；大量新增内容等场景仍未全面验收。功能边界、模块说明、已知限制和回退信息见 [自定义补丁说明](fixes/README.md)。每张列表独立过滤配置已搁置，未包含在当前版本。
+这些功能在 `piko-source/` 中的主要入口是 `timeline/`、`mediatools/` 补丁与同名运行时包。具体旧版设计和边界见 [列表位置说明](fixes/position-restoration-v3.md) 与 [媒体工具说明](features/README.md)；其中旧文档的版本号与验证结果只对应各自历史构建，不是 12.43 的验收报告。
 
-dev13 已通过 36 项测试、37 项补丁应用、签名/16 KiB 对齐和 ART 桥接预检，并已保留数据覆盖安装，启动检查未发现崩溃。媒体功能仍为预览版，完整交互验收未完成；各版本证据见 [features/EVIDENCE.md](features/EVIDENCE.md)。历史默认关闭，只保存在应用私有目录，不包含在设置备份中；旧记录的作者/头像信息会在再次浏览时补齐。
+上游目前用 `NewX: Theme` 提供 Material You/高对比度等主题能力，旧的“动态配色”补丁名称消失不等于功能消失。相反，下列旧补丁**尚未证明在 12.43 中等效**，不能在升级报告中默认为已保留：
 
-## 汉化范围
+- `NewX: Share post as image`：上游已移除。旧实现可在隔离工作区编译，但尚未通过 12.43 补丁应用与真机验证。
+- `NewX: Force highest video/audio quality`：上游已退役；新 X 的媒体策略可能已改变，但尚无等效性证据。
 
-- 356 条简体中文文本：设置、说明、搜索、过滤规则、白名单、功能开关、字体、备份恢复，以及下载、图片合并、分享和话题选择弹窗。
-- 使用 Android `values-zh-rCN` 资源，简体中文环境自动生效；默认英文资源保留。
-- `localization/` 处理语言资源和界面文本；时间线行为位于 `fixes/`，媒体工具位于 `features/`，三者分开维护。
-- 服务器返回的话题名称、帖子内容、内部功能开关键名和诊断日志不翻译。可选对象浏览器内部的开发者字段也保留原文。
-- 不保证绕过 X 的服务端限制或年龄验证；这些不是语言资源能改变的功能。
-- Morphe 补丁选择列表的补丁名称保留英文，确保原有自动化和补丁选择参数继续可用。
+在补齐验证或明确决定接受功能变化之前，不要将“所有旧功能无损迁移”作为发布结论。`codex/list-scroll-fix` 等早期实验分支不能直接合并成生产功能；应比对最终行为和测试，再选择当前实现。
 
-## 获取和构建
+## 升级新 X / Piko 时的保功能流程
 
-在 [Releases](https://github.com/Robert-Stackflow/piko-newx/releases) 获取预览包：`patches.mpp` 是导入 Morphe 的 Piko 补丁包，`.apk` 是已经应用补丁的 X 安装包，不需要再打补丁。附带对应补丁源码、许可、校验报告和 SHA256 清单。请阅读该版本说明；APK 仅验证了 arm64 目标，与官方 X 的签名不同，不保证能直接覆盖官方安装，不要为处理签名冲突直接清除数据。
+1. 以当前 `main` 和上一份**实际可用 APK** 为基线，逐项核对上表及两个未确认项；记录旧包哈希、X 版本、补丁源码提交与已选补丁清单。不要仅修改 `source.json` 的版本号。
+2. 在独立分支移植上游，逐文件检查 `timeline/`、`mediatools/`、中文资源与调用点。上游删除、重命名或改变默认值时，先判断行为是否等效；需要删减自维护功能时明确记录并征得用户同意。
+3. 把完成的源码更新到 `piko-source/`，更新 [source.json](localization/source.json) 中的源码提交、X/Piko 版本，并扩充 [功能契约测试](tests/test_current_feature_contract.py)。契约测试防止入口、运行时类或中文资源意外消失；它**不能代替**字节码补丁和真机行为测试。
+4. 运行 `python -m unittest discover -s tests -p test_current_feature_contract.py -v`、`python build_localized.py`，检查构建报告和所有预期补丁的应用结果。补丁跳过、指纹不唯一、资源缺失或测试失败均应停止发布，不靠减少补丁数量“修复”构建。
+5. 基于准确的 X 原包制作 APK，校验签名、目标架构、版本及 APK 哈希。覆盖安装只用 `adb install -r`，先确认签名兼容；不要清除应用数据来绕过安装失败。真机回归至少覆盖：列表切换/重启/刷新、“为你推荐”下拉刷新、转推过滤、首页入口、图片点击后的历史、视频页连续上滑历史、续播、防误触、下载管理与中文显示。
+6. 将版本对应的测试结论、已知差异和产物哈希写入发行说明。源码编译成功、补丁应用成功、真机可用必须分别陈述；旧包的验收不能自动沿用到新包。
 
-也可在 [Actions](https://github.com/Robert-Stackflow/piko-newx/actions/workflows/localized.yaml) 中选择 `codex/media-tools` 分支成功的 **Build Simplified Chinese NewX** 运行，下载 `piko-newx-zh-CN` 构建产物。登录 GitHub 后即可下载，产物包含补丁包、校验报告、对应源码和上游许可文件，不包含最终 X APK。历史产物可能已过保留期，构建成功也不等于通过真机验收。
+## 构建与产物
 
-自动构建使用 Actions 自带的令牌读取公开构建依赖，不需要个人密钥、GPG 私钥或发布权限。该工作流不会自动创建 Release。上游遗留的发布工作流和 `patches-bundle.json` 仅为保留 fork 历史，不是中文补丁下载入口。
-
-本地构建需要 Java 21、Android SDK、Python 3.10+ 和具备 `read:packages` 权限的 GitHub 令牌（通过环境变量 `GITHUB_ACTOR`、`GITHUB_TOKEN` 提供，不要写入仓库）：
+需要 Java 21、Android SDK、Python 3.10+，以及可读取构建依赖的 GitHub Packages 凭据（通过 `GITHUB_ACTOR`、`GITHUB_TOKEN` 环境变量提供，不要提交令牌）。运行：
 
 ```sh
 python build_localized.py
 ```
 
-构建脚本会校验固定的源码提交、翻译覆盖率、重复键、格式占位符、源码替换的精确匹配次数，以及时间线七文件和媒体工具十五文件清单；上游结构改变时停止构建，不静默遗漏。它会运行翻译、策略、生命周期和构建输入测试，保留英文资源，并生成对应源码归档。生成目录 `.localized-source/` 不是编辑入口。
+脚本从 `piko-source/` 复制 Git 跟踪的文件到临时 `.localized-source/`，先执行功能契约测试，再构建 `bins/patches.mpp`、源码归档和报告。`bins/` 与 `.localized-source/` 是生成目录，不应提交。Actions 的 [Build Simplified Chinese NewX](https://github.com/Robert-Stackflow/piko-newx/actions/workflows/localized.yaml) 只生成补丁包，**不会自动生成或安装 X APK，也不会自动发布 Release**。
 
-后续升级时先更新 `localization/source.json` 中的上游版本和提交，再检查新增文本、调整 `source-edits.json` 和测试预期，最后运行自动构建。不要只修改版本号就发布。
+补丁包是 Morphe 输入；APK 是另行将补丁应用到特定 X 原包后的产物。两者不可混称。旧版覆盖层的原始构建流程仍留在脚本的非 `vendored` 路径中，供审计和必要时回退使用。
 
-维护入口和测试方法见 [维护指南](docs/maintenance.md)。[VALIDATION.md](VALIDATION.md) 仅记录早期 `zh.1` 汉化包；当前媒体预览版的证据见 [features/EVIDENCE.md](features/EVIDENCE.md)，不能把不同包的验证结论混用。
+## 许可
 
-## 许可与署名
-
-Piko 源码及其派生的翻译遵循 GPL-3.0，并保留上游 `NOTICE` 的署名要求。见 [localization/LICENSE](localization/LICENSE) 和 [NOTICE](NOTICE)。本分支新增翻译及构建集成由 Robert-Stackflow 维护，与上游官方发行版无隶属关系。
-
-# Credits
-- [morphe](https://github.com/MorpheApp) - patcher
-- [revanced](https://github.com/ReVanced) - previous patcher
-- [j-hc](https://github.com/j-hc) - Project is inspired by j-hc's revanced builder template.
+保留上游 `LICENSE`、`NOTICE` 及各文件原始署名。中文翻译和自维护功能由 Robert-Stackflow 维护，与 Piko、X 官方无隶属关系。

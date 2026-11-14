@@ -9,6 +9,7 @@ on:
       - tests/**
       - fixes/**
       - features/**
+      - piko-source/**
       - build_localized.py
       - .github/workflows/localized.yaml
 
