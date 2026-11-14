@@ -9,3 +9,16 @@ gpg-secrets.txt
 bins/
 .localized-source/
 
+# Local build output and downloaded inputs
+.gradle/
+build/
+dist/
+.tools/
+*.apk
+*.apkm
+*.xapk
+*.mpp
+*.log
+*.jks
+*.keystore
+

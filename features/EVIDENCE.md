@@ -1,0 +1,106 @@
+# Media tools — development evidence
+
+Target remains `com.twitter.android`, X `12.22.0-prod.01`, original arm64 APK SHA-256
+`51d43aec02604d097677d0cfc68c7639046ceed6b007610aee143c007979b48f`.
+Piko source remains `bc03fce4352bcb7ee89299722d0e900af3fb8a82`; upstream builder rebase does not change that pin.
+
+## Native contracts
+
+- Detail component: unique `Focal post id read before the timeline exists` getter; history only uses the focal post found in the displayed success state, with account identity and RESUMED lifecycle. Replies fetched with it are not recorded.
+- Current video dispatcher: common event interface linking `PageChanged(page=` and `CurrentMediaChanged(mediaId=`. Current page is derived from the paired index writes, not a literal obfuscated field name.
+- Displayed video items are the native viewer's filtered items; media ID must belong to that post. A sole video can be recorded before playback starts. Multi-video posts wait for matching native media selection.
+- Progress is independently guarded by native progress post ID and media ID. Adjacent preloaded progress cannot supply another video's resume position.
+- Kotlin Duration is decoded through the APK's verified MILLISECONDS conversion, never treated as raw milliseconds.
+- Resume dispatches the existing `BarSeekTo(progress=` event once. Manual seeking cancels it; late/mismatched/near-finished saved positions are rejected.
+- Speed is already written to `persistent_video_settings_playback_speed` by the native speed-selection handler, which commits Android preferences. Native long-press acceleration is preserved. These are reused, not claimed as newly implemented patches.
+
+Obfuscated `com.x.video.tab.v`, `com.x.postdetail.n`, and `com.x.video.tab.g0` appear only in the isolated ART probe for this frozen APK. Production injection resolves semantic contracts and fails closed.
+
+## Privacy and lifecycle
+
+History defaults off. SQLite files use the app's private no-backup directory; no history export, network sync, DM hook, body logging or token logging. Recording depends on foreground activity/window, interactive device and native component lifecycle. Video is recorded immediately upon foreground selection, including paused videos, per the user's choice.
+
+History clearing invalidates older queued writes. The UI's queue monitor is never held during disk I/O. Playback bookmarks are separately bounded and excluded from history clearing. Download tasks track only explicit Piko task IDs, not unrelated system downloads. Clearing completed records does not delete media files.
+
+## Validation state
+
+- 23 local tests passed, including 24 immediate-view checks and 20 resume guards, plus existing list restoration/repost regression tests.
+- dev1 compiled in Actions but failed patch loading on an invalid resource prefix. Fixed without weakening upstream validation.
+- dev2 failed Java compilation due to a package-name/local-variable collision. Fixed.
+- dev3 compiled but stopped during APK patching on a cloned model adapter signature comparison. Descriptor comparisons now use string values.
+- dev4 applied all 37 selected patches to the frozen X APK, including every new semantic bridge; final resource/DEX/ART validation follows.
+- dev5 also fixes explicit retry after a missing system download and persists terminal task states for bounded retention.
+- dev4 passed signature, 413 translated resources and the 14-class list ART probe, but the new-module probe caught incompatible null-branch type merges in progress ID getters. Neither dev4 nor dev5 was installed. dev6 uses separate explicit null returns (also for detail items) and adds a regression check.
+- Runtime acceptance is **not yet complete**. Do not label these previews as stable or overwrite the installed listfix.6.2 before signature, final DEX and isolated ART checks pass.
+
+Planned device controls: history disabled, opened post, paused video, multiple video swipes, preload exclusion, background/foreground, search/filter, clearing, same-video resume after reopening/restarting, user seek override, lock/unlock/system Back, download completion/open/source/retry, and existing home List switching/position restoration.
+
+## Media UI / header revision (dev7)
+
+- User requested themed cards, media previews, correct appbar titles, removal of the duplicate in-history recording switch, an in-header touch-lock icon, and a home-header More menu with direct settings/downloads/history destinations.
+- The setting-level recording switch remains default-off. History schema 2 adds a `previews` JSON column transactionally; existing rows remain intact with `[]`. A subsequent foreground visit fills cover URLs. No retroactive network/API crawl is attempted.
+- Covers use Piko's existing media-picker parser on individual native media objects, once per deduplicated foreground visit. At most four image/selected-video-cover HTTPS twimg URLs are retained; never an entire post dump or signed playback URL.
+- Screen-scoped thumbnail work uses two workers, queue 32, 8 MiB memory cache, bounded image decoding and no persistent cache or URL logs. Redirects are disabled. Completed downloads use their own published content URI and Android thumbnail API; remote videos are never fetched for a cover. Network preview requests are made only for visible rows in these user-opened screens.
+- History uses a rounded search field, segmented All/Posts/Videos filters, a confirmed clear icon, themed cards and on-demand covers. Downloads use local preview cards, status/progress and the existing action menu. Stable download IDs and scroll anchors preserve position on progress updates; replacements are deferred during drag/fling.
+- Each custom fragment explicitly sets its appbar title on resume. Home shortcuts accept only the fixed downloads/history extra values; no class-name reflection or arbitrary destination.
+
+### Header bytecode evidence
+
+Frozen APK remains the SHA recorded above. Inspection helper is local-only `analysis/NativeHeaderInspect.java`; production resolvers contain no obfuscated owner names.
+
+- Home header: `home_logo_scroll_to_top` resource selects one renderer, observed as `com.x.home.tabbed.d0.i`. The unique consecutive Compose `endNode` calls close the trailing weighted action row and then the outer row. Add the view inside this trailing row, preserving avatar, centered logo and existing optional actions. Device XML confirms avatar at x12–180, centered logo at x528–672 and an empty top-right slot at width1200.
+- AndroidView: uniquely resolve factory `(Function1, Modifier, Function1, Composer, int, int)void` within `androidx.compose.ui.viewinterop`. The actual descriptor is `l.a` on this APK. Pass explicit empty Modifier and factory/update callbacks; no Compose internals in extension Java.
+- Video: `more_options` resource plus haze-bearing action owner identifies `video.tab.i4.invoke`. Its parent `video.tab.k6.A` supplies this action to the shared header adapter `k6.F` in both header branches. That adapter wraps its action in a `Function3` RowScope lambda via a constructor `(native-composable-lambda, int)`. Replace only the wrapper object with our Function3, rendering the lock child before invoking the original action. Existing native callbacks and Compose composition boundary remain in place.
+- Unlocked: the lock is an actual header child, with a 48dp hit target. Locked: the touch shield retains only an unlock icon at that child's measured bounds, even if native controls auto-hide. No right-edge coordinates are guessed; foreground exit removes the shield. Runtime overlap/rotation/auto-hide acceptance remains pending.
+
+29 local checks passed before dev7 CI, including migration retention, resource format parity, UI contract regression, bounded preview behavior and native header/direct destination guards. These static checks are not substitutes for final patching, ART and device interaction.
+
+### dev7 rejected at actual header creation
+
+CI 34699561466 succeeded, all 37 patches applied, 420 resources/signature/16KiB alignment and ART class loading passed. APK SHA256 `1f0cc12eee8704aa10677b2de90997b9f5b9319ef80482eb3464817e9099a656`. Actual startup crashed in AndroidView: `AbstractMethodError Function1.invoke(Object)` on `HeaderToolsRuntime$$ExternalSyntheticLambda3` (PID6199). Final DEX showed a constructor-only synthetic class shared by all three Kotlin Function1 callbacks; invoke implementations were eliminated before native injection made their callsites reachable. Class loading alone did not catch an absent interface implementation.
+
+Device immediately rolled back to media.dev6 without uninstalling or clearing data. dev7 is rejected, never present as usable. dev8 uses explicitly named callback classes with Object-erased override signatures retained by the extension's app.morphe keep rule; the patch now refuses missing/concrete invoke methods, and the device preflight checks each retained override and actually invokes the update callback. Also hide the settings-version footer for direct custom-screen entry and use the requested short history title.
+
+### dev8 video callback cast rejected
+
+CI34699993082, APK SHA256 `49aa1160c1cab902bde612847868cb6054f2fb5442d3347c3e777ba29346aae3`; 37 patches, 420 strings, signature/alignment, 24 media classes, 14 list classes and explicit update invocation passed. Real home rendering succeeded: More at `[1044,158][1188,302]`, avatar/logo unchanged. Popup contained all three requested shortcuts. Downloads opened with the correct title, local image thumbnail, styled completed card and Open/Source actions. History opened with correct title, five retained video records, styled search/chips/clear and no duplicate switch.
+
+Opening a recorded video's source and then its video viewer crashed (PID15893): R8 had replaced `Object -> Function2` in the named VideoActions constructor with `ExternalSyntheticThrowCCEIfNotNull`, since no host implementor exists during extension compilation. Device rolled back to dev6 again. Existing history schema2 data remains, but dev6's schema1 reader rejects it until a new-schema-compatible build is installed; no data is cleared.
+
+dev9 carries native actions as Object in Java; its cast and interface invocation are introduced only by the patch after shrinking, exactly as other native model bridges. Patch-time guards reject synthetic throw casts in callbacks. ART preflight now instantiates the wrapper with a dynamic-proxy native Function2 and actually invokes the forwarding bridge, requiring exactly one invocation. A null-only or class-only check is insufficient.
+
+### dev10 native-style list revision
+
+User refined the visual request: clear actions belong in each appbar, no positive task/record count above the content, and items should follow X's flat timeline style rather than standalone cards. Both screens now install a 48dp clear icon in the existing toolbar on resume and remove it on pause; confirmation and metadata-only clearing behavior remain unchanged. Empty/error text uses the ListView empty view rather than a permanent body header. Rows share the page background, have no outer card margins/radius, and use fine full-width dividers; media retains rounded clipping. Covers, row actions and typography remain host-themed. This version includes the dev9 native callback fix; device acceptance is still pending.
+
+dev10 CI34700809207 (commit6914629) passed; APK SHA256 `63ee8ab3e4bcdad32cfa88806239ec93f69d2b8b85de727795abfe5f1ecee70b`. 31 tests, 37 patches, 420 strings, signature/alignment, 24 media classes, 14 list classes, both native header classes and the native action forwarding invocation passed. The enhanced probe rejects dev8 with its actual callback cast failure, without installing it. dev10 installed with retained data. Both direct custom screens show the correct title and clear action at `[1056,146][1200,290]`; no count header. Download thumbnail and flat full-width divider visually verified. Both clear confirmation dialogs were cancelled. History search reaches the empty view and Videos filter is selectable. Some early UI navigation was invalidated by simultaneous user interaction; user then confirmed pausing. Full video-header/lock acceptance remains pending; do not infer it from bridge tests.
+
+### dev11 direct image-gallery history
+
+User reports viewing a timeline image without entering post detail does not create history. Confirmed native UI opens a full-screen image under MainActivity, not post detail. Frozen APK evidence: semantic `MediaGalleryState(owner=`, `, observedPost=` resolves `com.x.media.j0`, whose observed public contextual post is field `d`. The component constructor with `x_lite_immersive_gallery_swipe_enabled` is `com.x.media.l.<init>` and constructs that state. Its no-argument state-copy updater (`h` in this APK) reads live flow `E` via `getValue`, not a navigation argument snapshot. Owner account `s` has the same ID type as detail/video; `getLifecycle` shares the existing RESUMED/DESTROYED contract.
+
+Hook only completed gallery construction (one return) to bind a weak observer. Record only after the native component is RESUMED, app window focused, device interactive, history enabled, and live state contains a public observed post. Background/preloaded components, profile images and DM-only galleries without a public post are excluded. Use existing WatchSession plus the normal post key (`media=""`, kind=`post`) to avoid duplicates when swiping images of the same post. Foreground revisit updates time. ID/text delegates are derived from the existing timeline model methods; author/media use existing canonical model facts. No repository mutation, model reflection, click/thumbnail instrumentation or extra API request. Device acceptance pending.
+
+dev11 CI34701654974 (commite3580aa) succeeded. APK SHA256 `8f0069e36ce02e42c532ebcb22d9d44f7e1446bb79201db01bd6287be2867588`; 32 local tests, all 37 patches, 420 strings, signature/alignment, 26 media/gallery classes, 14 list classes, both native header classes and actual native callback forwarding passed. Final DEX confirms gallery construction calls `bindGallery` immediately before return and `galleryPost` reads live flow `E`/observed post `d`. APK copied to phone temporary storage but **not installed**: awaiting user confirmation to pause again. Installed version remains dev10. Direct-image history, video-header lock and full media runtime acceptance still require interaction tests.
+
+Subsequent user request: install. dev11 was successfully installed over dev10 on device986008e8 with `pm install -r`, without uninstalling or clearing data. The installed base.apk SHA256 matches the verified dev11 artifact above. Startup resumed NewXSettingsActivity (PID28070), with no crash entries for that process at the check. Current installed version is **dev11**; direct-image history and video-header interaction acceptance remain pending, not implied by successful installation/startup.
+
+### dev12 post-style snapshots and inline cyclic filter
+
+User requests X-like post rendering and replacing the separate All/Posts/Videos tab row with one icon at the search field's right. The native post renderer requires AvailablePost and live presenter/action state, which the bounded local history does not retain. This revision intentionally uses a post-style snapshot layout, not a fabricated native model or live social counters: 48dp avatar column, display name/handle, body and 1/2/3/4-media mosaic with shared outer rounding and video-only play marks. A separate "Viewed" relative timestamp explicitly means visit time, not publication time. Tap still opens the native source post.
+
+Capture only public author name/avatar on the existing deduplicated observation path. Exact APK: MinimalUser's profileImageUrl is passed to a five-argument StringBuilder helper; resolve the label/value register relationship within five instructions, then its unique URL getter (observed `c5.c`). The common user interface also declares getName (observed `mh`). Never scan past reuse of the label register into biography/background-image fields. Both properties use direct interface bridges introduced after shrinking. No whole-user serialization/reflection/API fetch. Avatar loading shares the bounded twimg-only visible-preview loader. Missing old metadata uses a generic placeholder, never guessed identity information; revisiting fills it.
+
+SQLite presentation columns `display_name`/`avatar` are added idempotently and transactionally based on table_info, leaving schema version2 so dev10/11 can still read old columns on rollback. Search also matches display name. Clear/retention/epoch semantics are unchanged. Filter cycles All -> Posts -> Videos -> All, preserves query and saved mode, has distinct glyphs, current/next accessible descriptions and a short mode toast; no separate tab row. Clear remains in appbar. 35 local tests passed, including 155 mosaic geometry/filter policy checks and old-reader migration compatibility. APK/native bridge and device visual acceptance pending.
+
+dev12 CI34702419974 (commit57d3ad1) succeeded; APK SHA256 `a44d464fbb0f7d22fb05aa90aec968070e0367efecd563e8b70b9baca6a3722e`, 176604534 bytes. All 37 patches, 423 translated resources, signing certificate and 16KiB alignment verified. ART passed 28 media/gallery/presentation classes and 14 list classes; actual header callbacks/native forwarding and both author name/avatar interface calls also passed. Final DEX avatar bridge calls the proven `mh.c` getter, not another image property. Artifact download initially failed through the configured proxy; a per-request direct TLS download from the same signed GitHub/Azure artifact URL succeeded, without changing global proxy settings or forwarding GitHub credentials to storage. APK is copied to `/data/local/tmp/piko-media-dev12.apk` but not installed pending pause confirmation. Installed app remains dev11. Visual/device interaction acceptance for this revision remains pending.
+
+Subsequent user request: install. dev12 successfully installed over dev11 on device986008e8 with data retained. Installed base.apk SHA256 matches the dev12 artifact above. Startup resumed NewXSettingsActivity (PID31766) with no crash entries for that process at the check. Current installed version is **dev12**. Installation/startup checks do not imply full visual or interaction acceptance.
+
+### dev13 silent history category switching
+
+User requested no toast when cycling history categories. Removed only the filter click callback's mode toast; mode cycling, icon/color changes, current/next accessibility and long-press descriptions, query preservation and error toasts remain unchanged. 36 local tests pass, including a focused regression that the category callback has no Toast while still updating the icon and list. Build and installation pending.
+
+dev13 CI34702963651 (commite70ef6d) succeeded. APK SHA256 `27d564edeb45c7574664c64991f5b22df0340f98c55f9a47a72bf8be9374cd3b`, 176604534 bytes. All 37 patches, 423 translated resources, signing certificate and 16KiB alignment verified. ART passed 28 media classes and 14 list classes; actual header callbacks, native forwarding and author name/avatar bridge calls passed. APK copied to `/data/local/tmp/piko-media-dev13.apk` but **not installed**. Installed app remains dev12; interaction acceptance is not implied by build/probe checks.
+
+Subsequent user request: install. dev13 successfully installed over dev12 with data retained. Installed base.apk SHA256 matches the verified dev13 artifact above. Startup process PID5537 remained running with no crash-buffer entries at the check. Current installed version is **dev13**; full visual/interaction acceptance remains pending.

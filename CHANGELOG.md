@@ -1,3 +1,447 @@
+## [3.35.0](https://github.com/crimera/piko-newx/compare/v3.34.1...v3.35.0) (2026-09-23)
+
+### ✨ New Features
+* **Twitter:** add inline download resolution chooser and quality preferences ([dbade44](https://github.com/crimera/piko/commit/dbade44644d2fbb3490a6d79788f4c4455abc80c))
+
+## [3.34.1](https://github.com/crimera/piko-newx/compare/v3.34.0...v3.34.1) (2026-09-23)
+
+### 🐛 Bug Fixes
+* **Twitter:** newx dim theme chrome backgrounds ([a6af4dc](https://github.com/crimera/piko/commit/a6af4dce4184cea0b5c646eacaa3f2e1f2973667))
+
+## [3.34.0](https://github.com/crimera/piko-newx/compare/v3.33.1...v3.34.0) (2026-09-23)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** apply custom sharing domain on share-sheet URL field ([c7230d2](https://github.com/crimera/piko/commit/c7230d2d3c11bcbb2c20137a83bd1d29512bf0bd))
+* **Twitter - newx:** resolve module divider lambda adapter by discriminator ([618c2af](https://github.com/crimera/piko/commit/618c2af3c2c98f036c783c6a591b1700dbd05d8a))
+* **Twitter - newx:** use dim surfaces in extension-owned screens ([5fb32a5](https://github.com/crimera/piko/commit/5fb32a59bfe768cfe74707084f0a8486414ee4e5))
+
+### ✨ New Features
+* **Twitter - newx:** restore classic dim background when dynamic color and AMOLED are off ([097b782](https://github.com/crimera/piko/commit/097b7824c7481901f0bf6c140706d9a525918753))
+
+## [3.33.1](https://github.com/crimera/piko-newx/compare/v3.33.0...v3.33.1) (2026-09-22)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** rename inline download template token to userName ([c0dd037](https://github.com/crimera/piko/commit/c0dd037aa96ce20b538b523d2af5baae58890e67))
+
+## [3.33.0](https://github.com/crimera/piko-newx/compare/v3.32.0...v3.33.0) (2026-09-22)
+
+### ✨ New Features
+* **Twitter:** add support for 12.28.0-prod.01 ([f77d602](https://github.com/crimera/piko/commit/f77d6029120c16c298eb54cc001599de444c216a))
+
+## [3.32.0](https://github.com/crimera/piko-newx/compare/v3.31.0...v3.32.0) (2026-09-22)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** resolve obfuscated Compose types in photos gallery ([61c0a87](https://github.com/crimera/piko/commit/61c0a876d67866ed5530de82580d3fcad37740e8))
+* **Twitter - newx:** resolve bottom paginator StateFlow getValue dynamically ([2f284b1](https://github.com/crimera/piko/commit/2f284b194dead1375ac89f5ec1c95a21a52f897b))
+
+### ✨ New Features
+* **Twitter:** allow custom download folders ([9cc2c6f](https://github.com/crimera/piko/commit/9cc2c6f3865160c3722cee7d827123bc85662ed8))
+
+## [3.31.0](https://github.com/crimera/piko-newx/compare/v3.30.4...v3.31.0) (2026-09-21)
+
+### ✨ New Features
+* **Twitter - newx:** long press inline download to download all media ([5888f3a](https://github.com/crimera/piko/commit/5888f3a40b4bad9318d2c3d0aa94755886f9116c))
+
+## [3.30.4](https://github.com/crimera/piko-newx/compare/v3.30.3...v3.30.4) (2026-09-21)
+
+### 🐛 Bug Fixes
+* **Twitter:** paginate Photos gallery when first page underfills viewport ([66e2e1c](https://github.com/crimera/piko/commit/66e2e1c3dac43b52e197ac88c2d7878a7fd215ad))
+
+## [3.30.3](https://github.com/crimera/piko-newx/compare/v3.30.2...v3.30.3) (2026-09-21)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** share-image field-walk parent resolution for B union ([1512f9f](https://github.com/crimera/piko/commit/1512f9f487ef84a4212bfa4ed524357d86699945))
+* **Twitter - newx:** share-image explicit spatial c() rect + strong bounds map ([e47559f](https://github.com/crimera/piko/commit/e47559ffb72adb1b52a7f064f329807a178deb75))
+
+## [3.30.2](https://github.com/crimera/piko-newx/compare/v3.30.1...v3.30.2) (2026-09-20)
+
+### 🐛 Bug Fixes
+* **Twitter:** Use generated ID for Photos gallery state ([cecd779](https://github.com/crimera/piko/commit/cecd779dc83d6bba444f2e0800e08c80652dac75))
+
+## [3.30.1](https://github.com/crimera/piko-newx/compare/v3.30.0...v3.30.1) (2026-09-20)
+
+### 🐛 Bug Fixes
+* **Twitter:** Preserve Photos gallery scroll position ([2498fdf](https://github.com/crimera/piko/commit/2498fdfab06b6e61ef71e69080eb1c4e09f1dde3))
+* **Twitter:** NewX Photos gallery pagination ([0a0ad6a](https://github.com/crimera/piko/commit/0a0ad6a88ccd0d278542e4dc7833ff2fcf3b296b))
+* **Twitter:** open full viewer with post context from gallery taps ([1dcd2ff](https://github.com/crimera/piko/commit/1dcd2ff674cceef3082ddae38da8b8b1b1a2d2d3))
+* **Twitter:** open full screen image in gallery view ([fe9c751](https://github.com/crimera/piko/commit/fe9c751721170a06fd7d11e1f3f34fe92453efd3))
+
+## [3.30.0](https://github.com/crimera/piko-newx/compare/v3.29.1...v3.30.0) (2026-09-20)
+
+### 🐛 Bug Fixes
+* **Twitter:** shrink gallery loading spinner (32dp, 4dp stroke) ([3d3077a](https://github.com/crimera/piko/commit/3d3077ae9cfb76c843f66918f7b35f891f62f2ed))
+* **Twitter:** custom sharing domain patch support for 12.28 alpha 4 ([d109ef7](https://github.com/crimera/piko/commit/d109ef768eb376dd44f8eec1a2a91eb568790b0f))
+* **Twitter:** resolve reply bar renderer across test-tag relocation ([99a39dd](https://github.com/crimera/piko/commit/99a39ddca08d86e2380b5ed0f00c5787645704a2))
+* **Twitter:** accept hoisted divider lambda in module divider matcher ([513d36b](https://github.com/crimera/piko/commit/513d36bc409bca8735c8de28b1082fd2457a6701))
+* **Twitter:** derive gallery photo navigation from call graph ([61ad517](https://github.com/crimera/piko/commit/61ad5176fef904dc3f351bc34851e266d7d9a792))
+* **Twitter:** match inline-action renderer semantically, resolve slots dynamically ([b1fe23a](https://github.com/crimera/piko/commit/b1fe23a9aab7393b62225abf08e4e7884c5b5b63))
+* **Twitter:** reserve explicit registers for inline-actions setting read ([7772b6e](https://github.com/crimera/piko/commit/7772b6e0b59343a733e07a81e81222cf9d0da2d5))
+* **Twitter:** add bounded gallery thumbnail cache with developer stats screen ([f7377af](https://github.com/crimera/piko/commit/f7377afe26c7ee605fdb7002f0959357d466919e))
+* **Twitter:** route profile photo pagination to bottom paginator ([a5855d4](https://github.com/crimera/piko/commit/a5855d400454ec9e533ae3eba01afa3ad09cb2ad))
+
+### ✨ New Features
+* **Twitter:** experimental support for 12.28.0-alpha.04 ([8e97eae](https://github.com/crimera/piko/commit/8e97eae57a18d6865d61661fed71c1dd4a07d231))
+
+## [3.29.1](https://github.com/crimera/piko-newx/compare/v3.29.0...v3.29.1) (2026-09-19)
+
+### 🐛 Bug Fixes
+* **Twitter:** drop legacy 12.25 targets ([e4a1e2e](https://github.com/crimera/piko/commit/e4a1e2e5026d73277b64b7a65d2d28dc04d69dad))
+
+## [3.29.0](https://github.com/crimera/piko-newx/compare/v3.28.0...v3.29.0) (2026-09-19)
+
+### 🐛 Bug Fixes
+* **Twitter:** refactor NewX source identity resolution ([45b230e](https://github.com/crimera/piko/commit/45b230e18a686afd97c6b386077303a2d6bd161d))
+
+### ✨ New Features
+* **Twitter:** add profile photos gallery view ([9daf4a3](https://github.com/crimera/piko/commit/9daf4a31a8daf97c8105a5da2e8c1894740d0df6))
+* **Twitter:** add more post menu hide options ([2c7c268](https://github.com/crimera/piko/commit/2c7c268aef36aaf0dd365339c137c804ca449e98))
+* **Twitter - newx:** add dislike inline action toggle ([ae7cdd2](https://github.com/crimera/piko/commit/ae7cdd2c729e8c30d6dea584320f7efd20f5cb68))
+
+### New Patches
+* **Twitter:** NewX: Gallery profile Photos tab
+
+## [3.28.0](https://github.com/crimera/piko-newx/compare/v3.27.1...v3.28.0) (2026-09-19)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** share crash log via direct activity intent ([b942d2b](https://github.com/crimera/piko/commit/b942d2b70bf021844aefba092a9469c672789725))
+
+### ✨ New Features
+* **Twitter - newx:** add crash test triggers to developer tools ([5b2b4a4](https://github.com/crimera/piko/commit/5b2b4a456c07063a3710c15b6f988b780ee8d974))
+* **Twitter - newx:** add crash logs with share and copy actions ([5feb43d](https://github.com/crimera/piko/commit/5feb43d3ccf0390405963bad742cdcc0e329e21a))
+
+### New Patches
+* **Twitter:** NewX: Crash logs
+
+## [3.27.1](https://github.com/crimera/piko-newx/compare/v3.27.0...v3.27.1) (2026-09-18)
+
+### 🐛 Bug Fixes
+* **Twitter:** add 12.27 prod ([4821dd1](https://github.com/crimera/piko/commit/4821dd10a7cdbc97a8d78e72e2b2b2b01b471d38))
+
+## [3.27.0](https://github.com/crimera/piko-newx/compare/v3.26.2...v3.27.0) (2026-09-18)
+
+### ✨ New Features
+* **Twitter - newx:** hide badges from custom navigation bar items ([6c27e79](https://github.com/crimera/piko/commit/6c27e79dee4e6be5a1bf03e9c85b333f5e14781c))
+
+## [3.26.2](https://github.com/crimera/piko-newx/compare/v3.26.1...v3.26.2) (2026-09-17)
+
+### 🐛 Bug Fixes
+* **Twitter:** Move NewX inline download click handling off the UI thread ([632b153](https://github.com/crimera/piko/commit/632b1538c44ae9851ebab03528c48e4599bc1191))
+
+## [3.26.1](https://github.com/crimera/piko-newx/compare/v3.26.0...v3.26.1) (2026-09-17)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** stabilize drawer choice option IDs across app updates ([95226c8](https://github.com/crimera/piko/commit/95226c86aebea587e97d2dbd5e504fa4407a7290))
+* **Twitter - newx:** dynamically resolve URT repository request in timeline refresh patch ([96245a7](https://github.com/crimera/piko/commit/96245a7f102042cf847837236ad85fd33ef83dbb))
+* **Twitter - newx:** dynamically resolve compose settings row layout for 12.28 ([7bae415](https://github.com/crimera/piko/commit/7bae415ebc05f28daec60a094e4667e58215d9c3))
+* **Twitter - newx:** harden drawer patch fingerprint and close argument resolution ([ac32219](https://github.com/crimera/piko/commit/ac32219b45d0ebad7c83fca4ece0ef3726887079))
+
+## [3.26.0](https://github.com/crimera/piko-newx/compare/v3.25.1...v3.26.0) (2026-09-17)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** differentiate navigation editor icon ([1ba8355](https://github.com/crimera/piko/commit/1ba8355fa72811eb6a9ab36cee7bff02025d4e4e))
+
+### ✨ New Features
+* **Twitter - newx:** overhaul drawer items customization ([244602b](https://github.com/crimera/piko/commit/244602bdddb581a40a76c989c1172d934dc50ca2))
+
+## [3.25.1](https://github.com/crimera/piko-newx/compare/v3.25.0...v3.25.1) (2026-09-16)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** auto-scroll navbar editor ([3ecf15b](https://github.com/crimera/piko/commit/3ecf15b5dca2d5de53c4721d11a8c37c57359af4))
+
+## [3.25.0](https://github.com/crimera/piko-newx/compare/v3.24.2...v3.25.0) (2026-09-16)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** improve navbar editor drag feedback ([ac98563](https://github.com/crimera/piko/commit/ac985637a8d07c42ffb67abdeb2031635b9dc4c6))
+
+### ✨ New Features
+* **Twitter - newx:** overhaul navbar customization ([228171b](https://github.com/crimera/piko/commit/228171b6d9b9a509438009ba93984b60f99e2616))
+
+## [3.24.2](https://github.com/crimera/piko-newx/compare/v3.24.1...v3.24.2) (2026-09-16)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** show selected destination icon ([02f91e5](https://github.com/crimera/piko/commit/02f91e57cf21e45b44c7e2c1dabdbacd9a186604))
+
+## [3.24.1](https://github.com/crimera/piko-newx/compare/v3.24.0...v3.24.1) (2026-09-16)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** reduce navbar patch memory usage ([c36262f](https://github.com/crimera/piko/commit/c36262f1af8dfd29d4833452a1caa58fffd80dab))
+* **Twitter - newx:** make restored splash background theme-aware ([84a4a39](https://github.com/crimera/piko/commit/84a4a3996e4b4b7ff58d0391920195a1cffa44b6))
+* **Twitter - newx:** restore twitter blue app icon & splash colors ([e0b50c2](https://github.com/crimera/piko/commit/e0b50c2826ee5f9d16e01fb8540ad3b1bf95ca4e))
+
+## [3.24.0](https://github.com/crimera/piko-newx/compare/v3.23.3...v3.24.0) (2026-09-16)
+
+### ✨ New Features
+* **Twitter - newx:** add drawer destinations to navbar editor ([d8a1526](https://github.com/crimera/piko/commit/d8a15266fc673fcad19c67532424a33f3ae51846))
+* **Twitter - newx:** add customizable navigation bar ([032513b](https://github.com/crimera/piko/commit/032513bc4e04e565cc047a48749fac9f2c0dd76b))
+
+### New Patches
+* **Twitter:** NewX: Customize navigation bar
+
+## [3.23.3](https://github.com/crimera/piko-newx/compare/v3.23.2...v3.23.3) (2026-09-14)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** preserve thread connectors when hiding dividers ([68170cd](https://github.com/crimera/piko/commit/68170cd326aeb1c3c5e39b3fc66468dda5782d73))
+
+## [3.23.2](https://github.com/crimera/piko-newx/compare/v3.23.1...v3.23.2) (2026-09-14)
+
+### 🐛 Bug Fixes
+* **Twitter:** optimize NewX extension runtime hot paths ([9f8a462](https://github.com/crimera/piko/commit/9f8a462a9502fc283ff443a5691887482471bf68))
+* **Twitter:** optimize NewX patch and runtime performance ([5fc1d2f](https://github.com/crimera/piko/commit/5fc1d2fe08ae37c42d1e8c42ee3e35d0f43b3174))
+
+## [3.23.1](https://github.com/crimera/piko-newx/compare/v3.23.0...v3.23.1) (2026-09-14)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** restore Ranked Following scroll position ([26874a4](https://github.com/crimera/piko/commit/26874a446554910f744425074d660b4adfdb1148))
+
+## [3.23.0](https://github.com/crimera/piko-newx/compare/v3.22.0...v3.23.0) (2026-09-14)
+
+### ✨ New Features
+* **Twitter - newx:** add customizable post menu with hidden items filter ([d80e46c](https://github.com/crimera/piko/commit/d80e46c660806edab1fea5412ddffb3b5c8420f0))
+
+### New Patches
+* **Twitter:** NewX: Customize post menu items
+
+## [3.22.0](https://github.com/crimera/piko-newx/compare/v3.21.2...v3.22.0) (2026-09-14)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** eliminate timeline success constructor register corruption and VerifyError ([6049e08](https://github.com/crimera/piko/commit/6049e089f621a7f3700166a9e7122632655dbab5))
+* **Twitter - newx:** make drawer content resolver semantic and deprecate 12.24 ([af4f1e4](https://github.com/crimera/piko/commit/af4f1e433429c44c066f2cdeb580bcfaef7061b9))
+* **Twitter - newx:** resolve runtime verify errors and restore inline download icon in 12.27 ([2c4da85](https://github.com/crimera/piko/commit/2c4da853d752f8ab0f40c0c4a07a43ee1e79fe6d))
+* **Twitter - newx:** port failing patches to 12.27.0-alpha.01 ([dec951d](https://github.com/crimera/piko/commit/dec951d008d8a617d234b374563408ba5d364c75))
+* **Twitter - newx:** custom font patch for 12.27 Compose refactor ([d6efb26](https://github.com/crimera/piko/commit/d6efb26d263000ed9960069dd6fdc93348f12d90))
+* **Twitter - newx:** support 12.27 settings renderer ([ee13d2f](https://github.com/crimera/piko/commit/ee13d2f7526d770ffb0b8b95c72fde3e4cd1a62d))
+
+### ✨ New Features
+* **Twitter - newx:** add 12.25.2-prod.01 to compatibility targets ([228a344](https://github.com/crimera/piko/commit/228a3440f3998f8e299ea0a484d782ed21d5ceb9))
+
+## [3.21.2](https://github.com/crimera/piko-newx/compare/v3.21.1...v3.21.2) (2026-09-13)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** stabilize inline download icon selection ([764cd7b](https://github.com/crimera/piko/commit/764cd7bf765d96482b3412f356710098ce55fa97))
+* **Twitter - newx:** skip disabled inline download render hooks ([3da9efd](https://github.com/crimera/piko/commit/3da9efdbe81d02dabf5c367726069878ab476742))
+* **Twitter - newx:** make inline action membership identity based ([d2b0adb](https://github.com/crimera/piko/commit/d2b0adba393b38a49c9a3733f644bb5bd7051ca7))
+* **Twitter - newx:** skip unnecessary inline media inspection ([148c74b](https://github.com/crimera/piko/commit/148c74bd9472b8783df5690d4dd25bfb62af0f66))
+* **Twitter - newx:** avoid full media parsing during composition ([3bfd7ad](https://github.com/crimera/piko/commit/3bfd7ad087233e3fb867b211635364be21b79357))
+* **Twitter - newx:** gate inline download diagnostics ([2391e51](https://github.com/crimera/piko/commit/2391e5129a37c843345c57921ae3d72a5d3f49e2))
+
+### 🔧 Improvements
+* **Twitter:** prune low-value NewX tests, add test policy to AGENTS.md ([88bd311](https://github.com/crimera/piko/commit/88bd311247e1992d383bbed8d8fe37b6f5555479))
+
+## [3.21.1](https://github.com/crimera/piko-newx/compare/v3.21.0...v3.21.1) (2026-09-13)
+
+### 🐛 Bug Fixes
+* **Twitter:** inline download button showing the share icon ([f94e38c](https://github.com/crimera/piko/commit/f94e38c52418e06d607fdd6382caf027ae0e6760))
+* **Twitter - newx:** validate dynamic choice resources ([0c01bf1](https://github.com/crimera/piko/commit/0c01bf1cb8db738d4046eb1602dc2dde56051349))
+
+## [3.21.0](https://github.com/crimera/piko-newx/compare/v3.20.0...v3.21.0) (2026-09-13)
+
+### 🐛 Bug Fixes
+* **Twitter:** inline download icon classification ([47e6a6d](https://github.com/crimera/piko/commit/47e6a6db8e42b28301cd2b20a474f80629d0ee34))
+* **Twitter:** group custom NewX post menu options ([ddacbad](https://github.com/crimera/piko/commit/ddacbad92cb4c65c8eaa1d3126ec44791121a223))
+
+### ✨ New Features
+* **Twitter - newx:** register dynamic choice resources ([fbf56bf](https://github.com/crimera/piko/commit/fbf56bfebdd021c9784ada806f4ed989b5cf4ec9))
+
+### 🔧 Improvements
+* **Twitter - newx:** discover drawer options dynamically ([7f21814](https://github.com/crimera/piko/commit/7f2181486a390b2d30ad27263f60340171e24415))
+
+## [3.20.0](https://github.com/crimera/piko-newx/compare/v3.19.3...v3.20.0) (2026-09-13)
+
+### ✨ New Features
+* **Twitter - newx:** hide post and reply dividers ([46c7e67](https://github.com/crimera/piko/commit/46c7e6787c7a882485769790e7d8e0e6f6b1d519))
+
+### New Patches
+* **Twitter:** NewX: Hide post dividers
+
+## [3.19.3](https://github.com/crimera/piko-newx/compare/v3.19.2...v3.19.3) (2026-09-12)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** support 12.26.0-alpha.03 ([0394de0](https://github.com/crimera/piko/commit/0394de0ff0f6983f175219e27d127c40bb7d8150))
+
+## [3.19.2](https://github.com/crimera/piko-newx/compare/v3.19.1...v3.19.2) (2026-09-12)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** preserve inline download icon on recomposition ([baf3189](https://github.com/crimera/piko/commit/baf3189040abdfddb40cb76ecffd233846d8e995))
+
+## [3.19.1](https://github.com/crimera/piko-newx/compare/v3.19.0...v3.19.1) (2026-09-11)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** keep dynamic color resolver API 29 compatible ([7242871](https://github.com/crimera/piko/commit/72428718c7e5de462ca81fecd9aa72eeedf0d2bf))
+
+## [3.19.0](https://github.com/crimera/piko-newx/compare/v3.18.1...v3.19.0) (2026-09-11)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** scope timeline position restoration ([a238d89](https://github.com/crimera/piko/commit/a238d895f6c442de0d287f2a09ce9482824dc58f))
+
+### ✨ New Features
+* **Twitter - newx:** identify download notifications by username ([5554a69](https://github.com/crimera/piko/commit/5554a693357ef7113796496da59f59790cd2e8a8))
+
+## [3.18.1](https://github.com/crimera/piko-newx/compare/v3.18.0...v3.18.1) (2026-09-11)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** support alpha.02 drawer renderer ([a4a44ad](https://github.com/crimera/piko/commit/a4a44ad50c6568822290e81f570b68156bb5e347))
+
+## [3.18.0](https://github.com/crimera/piko-newx/compare/v3.17.0...v3.18.0) (2026-09-11)
+
+### ✨ New Features
+* **Twitter - newx:** use native in-app download notifications ([d748bf9](https://github.com/crimera/piko/commit/d748bf98692a78c748d0aabb273c33dfa50b00cc))
+
+### 🔧 Improvements
+* **Twitter - newx:** deprecate versions ([ea5edef](https://github.com/crimera/piko/commit/ea5edef5a57e1c8dc1b444a24239d29bff5f354f))
+
+## [3.17.0](https://github.com/crimera/piko-newx/compare/v3.16.0...v3.17.0) (2026-09-10)
+
+### 🐛 Bug Fixes
+* **Twitter:** glide thumbnail cache routing ([9c1eb4a](https://github.com/crimera/piko/commit/9c1eb4a16465f8d4d5bbdab2948c2f029b6ddb89))
+* **Twitter - newx:** preserve optional resolver fallbacks ([d583480](https://github.com/crimera/piko/commit/d5834805446cbd5537878688b52ba7c0ee53f805))
+* **Twitter - newx:** allow missing drawer footer divider ([696e98a](https://github.com/crimera/piko/commit/696e98aba0c450c30dd68430e44b50934e94f4f2))
+* **Twitter:** help center not getting hidden ([067a2ad](https://github.com/crimera/piko/commit/067a2ad3dbe8a6e8ae99c748c77baa9cc37229ce))
+
+### ✨ New Features
+* **Twitter - newx:** add default profile post sorting ([217326e](https://github.com/crimera/piko/commit/217326e18e8362dd3519ecbead237161b615a708))
+
+### 🔧 Improvements
+* **Twitter - newx:** rename default sorting patches ([d662eba](https://github.com/crimera/piko/commit/d662ebaac0d3134195b1521d9893784f381c8830))
+* **Twitter - newx:** enforce resolver cardinality ([fad1d44](https://github.com/crimera/piko/commit/fad1d44851a1adfd1c48b4617d26efb5376b95ae))
+
+### New Patches
+* **Twitter:** NewX: Set default media tab
+* **Twitter:** NewX: Set default profile post sorting
+* **Twitter:** NewX: Set default reply sorting
+
+## [3.16.0](https://github.com/crimera/piko-newx/compare/v3.15.0...v3.16.0) (2026-09-10)
+
+### ✨ New Features
+* **Twitter - newx:** support Twitter 12.26 alpha ([57eb9ae](https://github.com/crimera/piko/commit/57eb9ae8375f601000fb5834ec3a273fd0441782))
+
+## [3.15.0](https://github.com/crimera/piko-newx/compare/v3.14.0...v3.15.0) (2026-09-10)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** enforce sensitive media write cardinality ([7b7b9d6](https://github.com/crimera/piko/commit/7b7b9d6d888c7c21b4946bb7265a38d73a392a35))
+* **Twitter - newx:** enforce For You parameter cardinality ([65c058e](https://github.com/crimera/piko/commit/65c058ec18fbb6e9fde70ff37c8fe00cdd54f2cf))
+* **Twitter - newx:** enforce premium accessor cardinality ([1a10f2b](https://github.com/crimera/piko/commit/1a10f2b28e07b9ff3396e1e2193f82dda7fb5583))
+* **Twitter - newx:** enforce reply bar lookup cardinality ([4d37b2c](https://github.com/crimera/piko/commit/4d37b2ce2cc957bb7c50afe2c638d550c287323d))
+* **Twitter - newx:** enforce inline action lookup cardinality ([6fd7cc3](https://github.com/crimera/piko/commit/6fd7cc3b8c60caf329c0bf883b1bcaa6b2389baf))
+* **Twitter - newx:** enforce feature flag lookup cardinality ([736d57e](https://github.com/crimera/piko/commit/736d57eb0609773fc7eb250448d6a56f808ae41b))
+* **Twitter - newx:** document dynamic color resolver order ([84a581c](https://github.com/crimera/piko/commit/84a581c223ae29463d23168dfea5de36c246268d))
+* **Twitter - newx:** enforce drawer resolver cardinality ([2704191](https://github.com/crimera/piko/commit/2704191ae08bf528ead1d49f96e63c4bbec75fc7))
+* **Twitter - newx:** document custom font resolver order ([eee29e6](https://github.com/crimera/piko/commit/eee29e6378694b1c6f723654b4da7e440d07e286))
+* **Twitter - newx:** accept current navigation state shape ([51e6793](https://github.com/crimera/piko/commit/51e67935ace5112cac08b1a448336f113b725f08))
+* **Twitter - newx:** resolve split drawer row renderers ([df97271](https://github.com/crimera/piko/commit/df97271873bd7cf6de01059f64d650b46485f97d))
+* **Twitter - newx:** harden timeline position resolver ([8d0b88d](https://github.com/crimera/piko/commit/8d0b88dacff1052e9c0704be31a7b937117d6955))
+* **Twitter - newx:** harden For You topic filter resolver ([6c4fa29](https://github.com/crimera/piko/commit/6c4fa295b6076f58d063875ce85c9439e58930f3))
+* **Twitter - newx:** harden timeline tab resolver ([2606017](https://github.com/crimera/piko/commit/26060175647e08839d2d9dbd74ca3da3d15b4a04))
+* **Twitter - newx:** harden premium upsell resolver ([36d35f5](https://github.com/crimera/piko/commit/36d35f53ff7765bde2bc694dc80fc1572346b8c7))
+* **Twitter - newx:** harden premium fingerprints ([12f6f7a](https://github.com/crimera/piko/commit/12f6f7a13d0f9093890be822cbaa31e7e731e499))
+* **Twitter - newx:** harden timeline model resolution ([c9ae181](https://github.com/crimera/piko/commit/c9ae18106c607269a6802004e0799718efe0b58e))
+* **Twitter - newx:** harden semantic model introspection ([c52514a](https://github.com/crimera/piko/commit/c52514ac5bea0e681701e42f1380d82e144c317a))
+* **Twitter - newx:** harden post model resolution ([e15a687](https://github.com/crimera/piko/commit/e15a68759b0d138f697cf197d4ea777dc7e38b3b))
+* **Twitter - newx:** harden share image resolver ([f64d0eb](https://github.com/crimera/piko/commit/f64d0eb49838f68a9b7a8860e837d62625063e55))
+* **Twitter - newx:** harden server logging resolver ([be3ad92](https://github.com/crimera/piko/commit/be3ad92170de01fc473f40a9ae5d939278c8d551))
+* **Twitter - newx:** harden reply sorting resolver ([2297ebb](https://github.com/crimera/piko/commit/2297ebba12937a04d122ea1f3e46be0ded2227a9))
+* **Twitter - newx:** harden post options resolver ([6ed8a40](https://github.com/crimera/piko/commit/6ed8a40cd4195a8b531ee3a4140149f1d2154c7d))
+* **Twitter - newx:** harden post reply bar resolver ([6edf348](https://github.com/crimera/piko/commit/6edf3488ac9bfb793448f82ab9683151a78c25c3))
+* **Twitter - newx:** harden default media tab resolver ([555a6e7](https://github.com/crimera/piko/commit/555a6e746d83413895b251e08553d4c0236244b2))
+* **Twitter - newx:** harden media quality resolver ([df28ff0](https://github.com/crimera/piko/commit/df28ff0ecf4f658816dc125d182ad7746c3287e3))
+* **Twitter - newx:** harden feature flag resolver ([166c6c7](https://github.com/crimera/piko/commit/166c6c7f350003ce756e923fc235fe7a828028de))
+* **Twitter - newx:** harden dynamic color resolver ([f81859b](https://github.com/crimera/piko/commit/f81859b9ac2d97bf269098dd6d4c56007460158d))
+* **Twitter - newx:** harden drawer resolver ([8df3015](https://github.com/crimera/piko/commit/8df301541fe10b583ee90f6d581c8519b7e38486))
+* **Twitter - newx:** harden custom sharing domain resolver ([f2c9c4c](https://github.com/crimera/piko/commit/f2c9c4c9aa674a11473cf6dc5caa81683ba4ac52))
+* **Twitter - newx:** harden canonical URL resolver ([75823b9](https://github.com/crimera/piko/commit/75823b9f9bdc4014541b816de4cd71fad5cee6b4))
+
+### ✨ New Features
+* **Twitter - newx:** add resolver cardinality helpers ([ad21b64](https://github.com/crimera/piko/commit/ad21b649be42715ad9677fef69e8d39dcada186f))
+
+### Commits
+* **Twitter - newx:** mark 12.25 prod compatible ([3f70880](https://github.com/crimera/piko/commit/3f70880f96729adf86a4e957ce22332bac379d8d))
+* **Twitter - newx:** add resolver cardinality linter ([3ffb421](https://github.com/crimera/piko/commit/3ffb4219ee9599bb12d601e03ba81b4a297f7a77))
+* **Twitter:** document newx resolver tooling ([ee694cb](https://github.com/crimera/piko/commit/ee694cb3721827571e103d4d470b7c114f23071b))
+
+## [3.14.0](https://github.com/crimera/piko-newx/compare/v3.13.3...v3.14.0) (2026-09-09)
+
+### ✨ New Features
+* **Twitter:** support 12.24.0-prod.02 ([6eb5236](https://github.com/crimera/piko/commit/6eb5236af4088e19f1d3914f1ff9373f2c7d231d))
+
+## [3.13.3](https://github.com/crimera/piko-newx/compare/v3.13.2...v3.13.3) (2026-09-09)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** restore photo viewer navigation inset ([ccb7457](https://github.com/crimera/piko/commit/ccb74571c35cedd8b34aa20deb8556749960477c))
+
+## [3.13.2](https://github.com/crimera/piko-newx/compare/v3.13.1...v3.13.2) (2026-09-09)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** harden reply bar fingerprints ([ca6a72a](https://github.com/crimera/piko/commit/ca6a72ad425a3ff25a1eefa08e335c578378b63c))
+* **Twitter - newx:** eliminate post-detail reply bar gradient scrim and insets ([98ee98c](https://github.com/crimera/piko/commit/98ee98c84523b21963bb0dcfbf474855acc1402d))
+
+## [3.13.1](https://github.com/crimera/piko-newx/compare/v3.13.0...v3.13.1) (2026-09-09)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** handle empty timeline pages and external deeplinks ([295ba45](https://github.com/crimera/piko/commit/295ba453f9fdd660fa24a055202a03a246a9a85d))
+
+### Commits
+* **Twitter:** update agents.md ([55b0e54](https://github.com/crimera/piko/commit/55b0e547421ef0153bd7cf7dffcf4548c911b3a7))
+
+## [3.13.0](https://github.com/crimera/piko-newx/compare/v3.12.1...v3.13.0) (2026-09-08)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** allow user-initiated topic refresh ([7d4af7d](https://github.com/crimera/piko/commit/7d4af7d59e8986906794ef3bc5d9502e96de52aa))
+* **Twitter - newx:** preserve timeline position during deep-link loads ([a04d7c9](https://github.com/crimera/piko/commit/a04d7c9fa3ba1f5ca71126551be8483f2971337c))
+
+### ✨ New Features
+* **Twitter - newx:** add piko settings on sidebar ([e2976cf](https://github.com/crimera/piko/commit/e2976cf79e2327c3b15778b8a1d8ea75a021843a))
+
+## [3.12.1](https://github.com/crimera/piko-newx/compare/v3.12.0...v3.12.1) (2026-09-08)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** gate startup refresh on saved timeline position ([449c6d2](https://github.com/crimera/piko/commit/449c6d26d81b4a66f472bd7c7ff98fd33ec570cb))
+* **Twitter - newx:** suppress populated timeline auto refresh ([2b48c7b](https://github.com/crimera/piko/commit/2b48c7b267f68bc5e3b28b580c56d6f7ca8c6865))
+* **Twitter - newx:** preserve initial timeline load ([2638690](https://github.com/crimera/piko/commit/26386906402fce01e1ad8af86d9997a99128e1e0))
+* **Twitter - NewX:** hook Glide thumbnail cache ([b6bed05](https://github.com/crimera/piko/commit/b6bed05f8c5146a814e2992cf25a74ba7a66979e))
+
+### Commits
+* **Twitter:** gate thumbnail cache backend ([41d3a33](https://github.com/crimera/piko/commit/41d3a33fe4a0a53b088af69b35441edac5564ef0))
+
+## [3.12.0](https://github.com/crimera/piko-newx/compare/v3.11.0...v3.12.0) (2026-09-08)
+
+### 🐛 Bug Fixes
+* **Twitter - newx:** gate For You topic sheet on reselect ([00c446a](https://github.com/crimera/piko/commit/00c446a5ae61bf35d83e23811350e127e78b8b62))
+* **Twitter - newx:** support refactored default media tab seed ([d7708ea](https://github.com/crimera/piko/commit/d7708ea92748a0b7aa954bb6d581929cdb39eb1e))
+* **Twitter - newx:** support canonical profile links after package move ([5cc1155](https://github.com/crimera/piko/commit/5cc11555186fa34debe4465d220e1a0abb0a5cae))
+* **Twitter - newx:** support highest media quality in newer builds ([cbb7f30](https://github.com/crimera/piko/commit/cbb7f307a8f9623ae7a894fbe8a26ccc5b2bae39))
+* **Twitter - newx:** support alpha timeline tab route arrays ([6cfc118](https://github.com/crimera/piko/commit/6cfc1189103e3f1e615abf74626258dc4bb8b979))
+
+### ✨ New Features
+* **Twitter:** experimental support for 12.25.0-alpha.01 ([cd76e4b](https://github.com/crimera/piko/commit/cd76e4b58441f3bf317f74138fe125a1f8b593b5))
+* **Twitter:** Improve NewX timeline patch compatibility ([b89697a](https://github.com/crimera/piko/commit/b89697a4a3398feedbcd61e27b1c03f2395ed8a8))
+
+### Commits
+* **Twitter:** update script ([5e76a62](https://github.com/crimera/piko/commit/5e76a627058375039b97799665244ce45e1d78a4))
+
+## [3.11.0](https://github.com/crimera/piko-newx/compare/v3.10.7...v3.11.0) (2026-09-08)
+
+### ✨ New Features
+* **Twitter - newx:** add disable blur setting ([1fa4361](https://github.com/crimera/piko/commit/1fa43617f89053fdb1e9241217c200add48d3880))
+
+### Commits
+* **Twitter:** untrack recent documentation ([aedc22b](https://github.com/crimera/piko/commit/aedc22b1f22b23dc4076e4594beebc470a1f2088))
+
+### New Patches
+* **Twitter:** NewX: Disable blur effects
+
+## [3.10.7](https://github.com/crimera/piko-newx/compare/v3.10.6...v3.10.7) (2026-09-07)
+
+### 🐛 Bug Fixes
+* **Twitter:** format changelogs for Morphe app updates ([f66771a](https://github.com/crimera/piko-newx/commit/f66771a2880d3b08515cdb7cd93d6abbd8788735))
+
+### Commits
+* **Twitter - newx:** detect hidden media conflicts on AOSP ([9809bbd](https://github.com/crimera/piko/commit/9809bbd1e83aaea8bb105ca7d365bc5ee985e24c))
+* **Twitter - newx:** add hide post reply bar toggle ([68a1fb8](https://github.com/crimera/piko/commit/68a1fb866ebbf4936da0eb347d53806a3dc68d3f))
+* **Twitter:** add show poll results patch ([09f8bf7](https://github.com/crimera/piko/commit/09f8bf71f530e36c52b7cf52cc249fbb3c48fdb9))
+
+### New Patches
+* **Twitter:** NewX: Hide post reply bar
+* **Twitter:** NewX: Show poll results
+
 # [v3.10.6](https://github.com/crimera/piko-newx/releases/tag/v3.10.6) (2026-09-06)
 
 ### Commits

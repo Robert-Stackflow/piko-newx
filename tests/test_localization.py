@@ -54,9 +54,9 @@ class PinnedSourceTests(unittest.TestCase):
 
     def test_complete_overlay_matches_pinned_source(self):
         report = overlay.apply(self.source, check_only=True)
-        self.assertEqual(report["translated_resources"], 356)
+        self.assertEqual(report["translated_resources"], 492)
         self.assertEqual(report["localized_java_files"], 9)
-        self.assertEqual(report["source_edits"], 94)
+        self.assertEqual(report["source_edits"], 92)
 
     def test_wrong_revision_rejected(self):
         with patch.object(overlay.subprocess, "check_output", return_value="0" * 40):

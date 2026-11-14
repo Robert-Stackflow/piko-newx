@@ -4,10 +4,8 @@ import json
 from pathlib import Path
 import re
 
-import apkmirror
 import github
-from apkmirror import Version
-from build_piko import PIKO_REPO, PikoBuild, build_piko_patches
+from build_piko import PikoBuild, build_piko_patches
 from build_variants import get_xlite_patches
 from constants import REPO
 from download_bins import download_morphe_cli
@@ -15,19 +13,43 @@ from utils import publish_release, sign_artifact
 
 
 CHANGELOG_FILE = "CHANGELOG.md"
+CHANGELOG_APP_NAME = "Twitter"
 PATCHES_BUNDLE_FILE = "patches-bundle.json"
 PATCHES_LIST_ASSET = "patches-list.json"
 PATCHES_MPP = "bins/patches.mpp"
 RELEASE_TAG_PATTERN = re.compile(r"^v\d+\.\d+\.\d+$")
 LEGACY_RELEASE_PATTERN = re.compile(r"^(?P<app>.+)-(?P<piko>[0-9a-f]{7,40})$")
+APP_VERSION_PATTERN = re.compile(
+    r"^(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)"
+    r"(?:-(?P<channel>alpha|beta|prod)\.(?P<revision>\d+))?$"
+)
+APP_VERSION_CHANNEL_PRIORITY = {"alpha": 0, "beta": 1, "prod": 2}
 
 
-def get_latest_version(
-    versions: list[Version], supported_versions: frozenset[str] | None = None
-) -> Version | None:
-    for version in versions:
-        if supported_versions is None or version.version in supported_versions:
-            return version
+def app_version_sort_key(version: str) -> tuple[int, int, int, int, int]:
+    match = APP_VERSION_PATTERN.fullmatch(version)
+    if match is None:
+        raise ValueError(f"Unsupported X app version format: {version}")
+
+    channel = match.group("channel")
+    channel_priority = (
+        APP_VERSION_CHANNEL_PRIORITY[channel] if channel is not None else 3
+    )
+    revision = int(match.group("revision") or 0)
+    return (
+        int(match.group("major")),
+        int(match.group("minor")),
+        int(match.group("patch")),
+        channel_priority,
+        revision,
+    )
+
+
+def get_latest_version(supported_versions: frozenset[str]) -> str | None:
+    if not supported_versions:
+        return None
+
+    return max(supported_versions, key=app_version_sort_key)
 
 
 def validate_release_tag(release_tag: str) -> str:
@@ -76,7 +98,7 @@ def get_previous_release_context(
 
 
 def has_release_content_changed(
-    latest_version: Version,
+    app_version: str,
     piko_build: PikoBuild,
     previous_release: github.GithubRelease | None,
     metadata: dict[str, str],
@@ -91,7 +113,7 @@ def has_release_content_changed(
         return True
 
     return (
-        previous_app_version != latest_version.version
+        previous_app_version != app_version
         or not piko_build.commit.startswith(previous_piko_commit)
     )
 
@@ -108,7 +130,7 @@ def read_generated_changelog(path: str | None) -> str:
 
 def write_patches_bundle(
     release_tag: str,
-    latest_version: Version,
+    app_version: str,
     piko_build: PikoBuild,
     repo: str = REPO,
 ) -> None:
@@ -119,7 +141,7 @@ def write_patches_bundle(
         "created_at": now,
         "description": f"Piko x-lite patch bundle for Morphe ({release_tag}).",
         "signature_download_url": f"https://github.com/{repo}/releases/download/{release_tag}/patches.mpp.asc",
-        "app_version": latest_version.version,
+        "app_version": app_version,
         "piko_commit": piko_build.commit,
     }
     Path(PATCHES_BUNDLE_FILE).write_text(
@@ -143,56 +165,32 @@ def write_patches_list(patches: list[str]) -> None:
     )
 
 
-def get_piko_commits(
-    previous_release: github.GithubRelease | None,
-    previous_piko_commit: str | None,
-    current_commit: str,
-) -> list[github.GithubCommit] | None:
-    if previous_release is None or previous_piko_commit is None:
-        return None
-
-    if current_commit.startswith(previous_piko_commit):
-        return []
-
-    return github.get_commits_between(PIKO_REPO, previous_piko_commit, current_commit)
-
-
-def format_commit_list(commits: list[github.GithubCommit] | None) -> str:
-    if not commits:
-        return ""
-
-    entries = "\n".join(
-        f"- [`{commit.sha[:7]}`]({commit.html_url}) {commit.subject}"
-        for commit in commits
-    )
-    return f"Piko commits since previous release:\n{entries}"
-
-
 def update_changelog(
     version: str,
     tag: str,
     new_patches: list[str],
-    commits: list[github.GithubCommit] | None,
     generated_changelog: str = "",
     repo: str = REPO,
+    previous_tag: str | None = None,
 ) -> None:
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    heading = f"# [{version}](https://github.com/{repo}/releases/tag/{tag}) ({today})"
+    display_version = version.removeprefix("v")
+    release_url = (
+        f"https://github.com/{repo}/compare/{previous_tag}...{tag}"
+        if previous_tag is not None
+        else f"https://github.com/{repo}/releases/tag/{tag}"
+    )
+    heading = f"## [{display_version}]({release_url}) ({today})"
 
     sections: list[str] = []
 
     if generated_changelog:
         sections.append(generated_changelog)
 
-    if commits:
-        commit_bullets = "\n".join(
-            f"* [`{commit.sha[:7]}`]({commit.html_url}) {commit.subject}"
-            for commit in commits
-        )
-        sections.append(f"### Commits\n{commit_bullets}")
-
     if new_patches:
-        patch_bullets = "\n".join(f"* **Twitter:** {patch}" for patch in new_patches)
+        patch_bullets = "\n".join(
+            f"* **{CHANGELOG_APP_NAME}:** {patch}" for patch in new_patches
+        )
         sections.append(f"### New Patches\n{patch_bullets}")
 
     body = "\n\n".join(sections) if sections else "* No new patches or commits."
@@ -210,11 +208,10 @@ def update_changelog(
 
 
 def process(
-    latest_version: Version,
+    app_version: str,
     piko_build: PikoBuild,
     release_tag: str,
     previous_release: github.GithubRelease | None = None,
-    previous_piko_commit: str | None = None,
     generated_changelog: str = "",
 ) -> None:
     piko_commit = piko_build.commit[:7]
@@ -235,30 +232,19 @@ def process(
         if previous_patches is not None
         else patches
     )
-    commits = get_piko_commits(
-        previous_release, previous_piko_commit, piko_build.commit
-    )
-
     update_changelog(
         version=release_tag,
         tag=release_tag,
         new_patches=new_patches,
-        commits=commits,
         generated_changelog=generated_changelog,
+        previous_tag=previous_release.tag_name if previous_release else None,
     )
 
     patch_list = format_new_patch_list(new_patches)
-    commit_list = format_commit_list(commits)
     release_sections = [
-        section for section in (generated_changelog, commit_list, patch_list) if section
+        section for section in (generated_changelog, patch_list) if section
     ]
-    additional_notes = "\n\n".join(release_sections)
-    additional_notes = f"{additional_notes}\n\n" if additional_notes else ""
-    message = f"""{additional_notes}Piko source:
-[x-lite@{piko_commit}](https://github.com/crimera/piko/commit/{piko_build.commit})
-X app version: `{latest_version.version}`
-Release version: `{release_tag}`
-"""
+    message = "\n\n".join(release_sections)
 
     signature = sign_artifact(PATCHES_MPP)
     release_assets = [PATCHES_MPP, PATCHES_LIST_ASSET, *( [signature] if signature else [] )]
@@ -269,11 +255,11 @@ Release version: `{release_tag}`
         message,
         release_tag,
     )
-    write_patches_bundle(release_tag, latest_version, piko_build)
+    write_patches_bundle(release_tag, app_version, piko_build)
 
 
 def should_publish(
-    latest_version: Version,
+    app_version: str,
     piko_build: PikoBuild,
     previous_release: github.GithubRelease | None,
     semantic_bump: bool,
@@ -283,7 +269,7 @@ def should_publish(
         return True
 
     return has_release_content_changed(
-        latest_version, piko_build, previous_release, metadata
+        app_version, piko_build, previous_release, metadata
     )
 
 
@@ -293,35 +279,28 @@ def main(
     generated_changelog: str = "",
 ) -> None:
     patch_version = validate_release_tag(release_tag)
-    versions = apkmirror.get_versions(
-        "https://www.apkmirror.com/apk/x-corp/twitter/"
-    )
 
     # Build the same Piko revision that will be used for patching first.  Its
-    # compatibility targets determine which X APK can actually be patched.
+    # compatibility targets determine which X app version is represented.
     piko_build = build_piko_patches(patch_version=patch_version)
-    latest_version = get_latest_version(versions, piko_build.supported_versions)
-    if latest_version is None:
+    app_version = get_latest_version(piko_build.supported_versions)
+    if app_version is None:
         raise Exception("No X version is supported by the Piko x-lite patches")
 
     previous_release = github.get_last_build_version(REPO)
     metadata = read_release_metadata()
-    _, previous_piko_commit = get_previous_release_context(
-        previous_release, metadata
-    )
     if not should_publish(
-        latest_version, piko_build, previous_release, semantic_bump, metadata
+        app_version, piko_build, previous_release, semantic_bump, metadata
     ):
         print("No semantic or release-content changes found")
         return
 
-    print(f"Publishing {release_tag} for X {latest_version.version}")
+    print(f"Publishing {release_tag} for X {app_version}")
     process(
-        latest_version,
+        app_version,
         piko_build,
         release_tag=release_tag,
         previous_release=previous_release,
-        previous_piko_commit=previous_piko_commit,
         generated_changelog=generated_changelog,
     )
 
@@ -338,30 +317,19 @@ def manual(
         supported = ", ".join(sorted(piko_build.supported_versions))
         raise ValueError(f"{version} is not supported by Piko x-lite (supported: {supported})")
 
-    latest_version = Version(
-        link=(
-            "https://www.apkmirror.com/apk/x-corp/twitter/"
-            f"x-{version.replace('.', '-')}-release"
-        ),
-        version=version,
-    )
     previous_release = github.get_last_build_version(REPO)
     metadata = read_release_metadata()
-    _, previous_piko_commit = get_previous_release_context(
-        previous_release, metadata
-    )
     if not should_publish(
-        latest_version, piko_build, previous_release, semantic_bump, metadata
+        version, piko_build, previous_release, semantic_bump, metadata
     ):
         print("No semantic or release-content changes found")
         return
 
     process(
-        latest_version,
+        version,
         piko_build,
         release_tag=release_tag,
         previous_release=previous_release,
-        previous_piko_commit=previous_piko_commit,
         generated_changelog=generated_changelog,
     )
 
