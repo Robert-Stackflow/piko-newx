@@ -20,9 +20,19 @@ ROOT = Path(__file__).resolve().parent
 def main():
     config = json.loads((ROOT / "localization/source.json").read_text(encoding="utf-8"))
     source = ROOT / ".localized-source"
+    vendored = config.get("source_mode") == "vendored"
+    if config.get("source_mode") not in (None, "vendored"):
+        raise ValueError("Unsupported source_mode")
+    if vendored:
+        subprocess.run([os.sys.executable, "-m", "unittest", "tests.test_current_feature_contract"],
+                       cwd=ROOT, check=True)
     resume = sys.argv[1:] == ["--resume"]
     if resume:
-        if not source.is_dir() or subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=source, text=True).strip() != config["commit"]:
+        source_commit = ((source / ".source-commit").read_text(encoding="utf-8").strip()
+                         if vendored and (source / ".source-commit").is_file()
+                         else subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=source, text=True).strip()
+                         if source.is_dir() and not vendored else None)
+        if source_commit != config["commit"]:
             raise ValueError("Cannot resume an unrecognized source checkout")
         if f"version = {config['version']}" not in (source / "gradle.properties").read_text(encoding="utf-8"):
             raise ValueError("Cannot resume a different build version")
@@ -30,20 +40,36 @@ def main():
     else:
         if source.exists():
             raise FileExistsError(".localized-source already exists; use a fresh checkout for a build")
-        subprocess.run(["git", "init", str(source)], check=True)
-        subprocess.run(["git", "remote", "add", "origin",
-                        f"https://github.com/{config['repository']}.git"], cwd=source, check=True)
-        subprocess.run(["git", "fetch", "--depth=1", "origin", config["commit"]], cwd=source, check=True)
-        subprocess.run(["git", "checkout", "--detach", "FETCH_HEAD"], cwd=source, check=True)
-        test_env = {**os.environ, "PIKO_TEST_SOURCE": str(source)}
-        subprocess.run([os.sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
-                       cwd=ROOT, env=test_env, check=True)
-        report = apply(source)
-        report.update(apply_fixes(source))
-        report["translated_resources"] += report["fix_resources"]
-        if config.get("media_tools_preview", False):
-            report.update(apply_features(source))
-            report["translated_resources"] += report["feature_resources"]
+        if vendored:
+            tracked = subprocess.check_output(["git", "ls-files", "-z", "--", "piko-source"], cwd=ROOT).split(b"\0")
+            if not tracked or not tracked[0]:
+                raise ValueError("Vendored Piko source is missing")
+            for raw in tracked:
+                if not raw:
+                    continue
+                relative = Path(os.fsdecode(raw)).relative_to("piko-source")
+                target = source / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(ROOT / "piko-source" / relative, target)
+            (source / ".source-commit").write_text(config["commit"], encoding="utf-8")
+            report = {"source_mode": "vendored", "source_commit": config["commit"],
+                      "translated_resources": len(list((source / "patches/src/main/resources/addresources/values-zh-rCN").rglob("*.xml"))),
+                      "fix_files": [], "feature_files": []}
+        else:
+            subprocess.run(["git", "init", str(source)], check=True)
+            subprocess.run(["git", "remote", "add", "origin",
+                            f"https://github.com/{config['repository']}.git"], cwd=source, check=True)
+            subprocess.run(["git", "fetch", "--depth=1", "origin", config["commit"]], cwd=source, check=True)
+            subprocess.run(["git", "checkout", "--detach", "FETCH_HEAD"], cwd=source, check=True)
+            test_env = {**os.environ, "PIKO_TEST_SOURCE": str(source)}
+            subprocess.run([os.sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
+                           cwd=ROOT, env=test_env, check=True)
+            report = apply(source)
+            report.update(apply_fixes(source))
+            report["translated_resources"] += report["fix_resources"]
+            if config.get("media_tools_preview", False):
+                report.update(apply_features(source))
+                report["translated_resources"] += report["feature_resources"]
         print(json.dumps(report, indent=2), flush=True)
         # Cleanup is confined to the new generated source checkout above.
         pre_build_cleanup(source)
@@ -60,7 +86,9 @@ def main():
         raise FileNotFoundError(artifact)
     shutil.copy2(artifact, output / "patches.mpp")
     # Include corresponding source and upstream notices with every binary artifact.
-    tracked = subprocess.check_output(["git", "ls-files"], cwd=source, text=True).splitlines()
+    tracked = ([str(Path(path).relative_to("piko-source")) for path in
+                subprocess.check_output(["git", "ls-files", "--", "piko-source"], cwd=ROOT, text=True).splitlines()]
+               if vendored else subprocess.check_output(["git", "ls-files"], cwd=source, text=True).splitlines())
     added_resources = list((source / "patches/src/main/resources/addresources/values-zh-rCN").rglob("*.xml"))
     source_files = {source / path for path in tracked} | set(added_resources)
     source_files.update(source / path for path in report["fix_files"])

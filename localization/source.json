@@ -1,8 +1,9 @@
 {
-  "repository": "crimera/piko",
-  "commit": "dbade44644d2fbb3490a6d79788f4c4455abc80c",
-  "upstream_release": "v3.35.0",
-  "version": "3.35.0-zh.1-media.dev34",
+  "repository": "Robert-Stackflow/piko-newx",
+  "commit": "631f1d7f6",
+  "source_mode": "vendored",
+  "upstream_release": "v3.11.1",
+  "version": "3.11.1-zh.1",
   "media_tools_preview": true,
-  "x_version": "12.28.0-prod.01"
+  "x_version": "12.43.0-prod.01"
 }
