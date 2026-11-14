@@ -22,8 +22,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import app.morphe.extension.newx.settings.NewXCustomScreenFragment;
-import app.morphe.extension.newx.settings.NewXSettingsUi;
+import app.morphe.extension.crimera.settings.CustomScreenFragment;
+import app.morphe.extension.crimera.settings.SettingsUi;
 import app.morphe.extension.newx.settings.NewXSettingsActivity;
 import app.morphe.extension.newx.ui.Theme;
 import static app.morphe.extension.newx.mediatools.MediaToolsUi.*;
@@ -32,7 +32,7 @@ import app.morphe.extension.shared.Utils;
 
 /** Only Piko task metadata. Clearing this list never removes downloaded media. */
 @SuppressWarnings("deprecation")
-public final class DownloadsFragment extends NewXCustomScreenFragment {
+public final class DownloadsFragment extends CustomScreenFragment {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final List<DownloadTaskStore.Task> tasks = new ArrayList<>();
     private final Set<Long> retrying = new HashSet<>();
@@ -50,7 +50,7 @@ public final class DownloadsFragment extends NewXCustomScreenFragment {
         Context context = getActivity();
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(NewXSettingsUi.backgroundColor(context));
+        root.setBackgroundColor(SettingsUi.backgroundColor(context));
         previews = new MediaPreviewLoader();
         status = label(context, "", 14, true); status.setGravity(android.view.Gravity.CENTER);
         status.setPadding(dp(context, 32), dp(context, 24), dp(context, 32), dp(context, 24));

@@ -5,7 +5,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import app.morphe.extension.newx.settings.SettingsRegistry;
+import app.morphe.extension.crimera.settings.SettingsRegistry;
 
 /** Display-only filter. Never deletes repository items or changes network pagination. */
 public final class TimelineRepostFilter {
@@ -13,15 +13,13 @@ public final class TimelineRepostFilter {
 
     public static boolean showReposts(Enum<?> timeline) {
         if (timeline == null) return true;
-        String suffix;
         switch (timeline.name()) {
-            case "FOR_YOU": suffix = "for_you"; break;
+            case "FOR_YOU": return SettingsRegistry.getBooleanOrDefault("newx.timeline.show_reposts_for_you", true);
             case "FOLLOWING":
-            case "RANKED_FOLLOWING": suffix = "following"; break;
-            case "LIST_POSTS": suffix = "lists"; break;
+            case "RANKED_FOLLOWING": return SettingsRegistry.getBooleanOrDefault("newx.timeline.show_reposts_following", true);
+            case "LIST_POSTS": return SettingsRegistry.getBooleanOrDefault("newx.timeline.show_reposts_lists", true);
             default: return true;
         }
-        return SettingsRegistry.getBooleanOrDefault("newx.timeline.show_reposts_" + suffix, true);
     }
 
     public interface Model {

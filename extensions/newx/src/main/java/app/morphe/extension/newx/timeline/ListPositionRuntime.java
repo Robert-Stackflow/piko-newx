@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
 import app.morphe.extension.shared.Utils;
-import app.morphe.extension.newx.settings.SettingsRegistry;
+import app.morphe.extension.crimera.settings.SettingsRegistry;
 
 /** All native adapter bodies are replaced with verified direct bytecode accesses. */
 public final class ListPositionRuntime {
@@ -143,6 +143,18 @@ public final class ListPositionRuntime {
             REFRESH_STARTS.put(scope,SystemClock.uptimeMillis());
             for(Session session:new ArrayList<>(ACTIVE.values()))
                 if(scope.equals(session.scope)) trace("pull-refresh",session);
+        }
+    }
+    /** 12.43 routes pull-to-refresh through the URT repository, not a component cursor resolver. */
+    public static void beginHomeRefresh() {
+        if (Looper.myLooper()!=Looper.getMainLooper()) {
+            new Handler(Looper.getMainLooper()).post(ListPositionRuntime::beginHomeRefresh);
+            return;
+        }
+        long now=SystemClock.uptimeMillis();
+        for(Session session:new ArrayList<>(ACTIVE.values())) if(session.scope.startsWith("home:")) {
+            REFRESH_STARTS.put(session.scope,now);
+            trace("pull-refresh",session);
         }
     }
     public static void top(Object flow) {

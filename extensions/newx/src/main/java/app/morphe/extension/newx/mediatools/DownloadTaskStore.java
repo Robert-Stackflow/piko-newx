@@ -9,11 +9,18 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import app.morphe.extension.newx.misc.DownloadDestination;
+import app.morphe.extension.crimera.downloader.DownloadEngine;
+import app.morphe.extension.crimera.downloader.EnqueueResult;
+import app.morphe.extension.crimera.downloader.model.DownloadRequest;
+import app.morphe.extension.crimera.downloader.model.EnqueueState;
+import app.morphe.extension.newx.misc.NewXDownloadFolders;
+import app.morphe.extension.newx.misc.NewXDownloader;
 import app.morphe.extension.shared.Utils;
 
 /** Only explicitly tracked Piko downloads; never enumerate unrelated system downloads. */
@@ -21,6 +28,8 @@ public final class DownloadTaskStore {
     private static final ExecutorService IO = Executors.newSingleThreadExecutor();
     private static final ExecutorService RETRIES = Executors.newSingleThreadExecutor();
     private static final Set<Long> ACTIVE_SAF = ConcurrentHashMap.newKeySet();
+    private static final AtomicInteger NEXT_ENGINE_ID = new AtomicInteger(
+            1_000_000_000 + new java.security.SecureRandom().nextInt(500_000_000));
     private static SQLiteDatabase database;
     public record Task(long id, String url, String file, String mime, String post,
                        String author, String state, String reason, String uri,
@@ -55,6 +64,48 @@ public final class DownloadTaskStore {
         ACTIVE_SAF.add(id);
         queued(context, id, url, file, mime, post, author);
         return id;
+    }
+
+    /** Reserve a history row before the transfer can emit a terminal event. */
+    public static EnqueueResult enqueueTracked(Context context, DownloadEngine engine,
+                                                DownloadRequest request, String post, String author) {
+        for (int attempt = 0; attempt < 3; attempt++) {
+            int engineId = NEXT_ENGINE_ID.updateAndGet(id -> id >= 2_000_000_000 ? 1_000_000_000 : id + 1);
+            long taskId = -(long) engineId;
+            ContentValues values = new ContentValues();
+            values.put("id", taskId); values.put("url", safe(request.url(), 8192));
+            values.put("file", safe(request.fileName(), 255));
+            values.put("mime", safe(request.mimeType(), 128));
+            values.put("post", safe(post, 32)); values.put("author", safe(author, 128));
+            values.put("state", "queued"); values.put("reason", ""); values.put("uri", "");
+            values.put("updated", System.currentTimeMillis());
+            try {
+                if (database(context).insertWithOnConflict("tasks", null, values,
+                        SQLiteDatabase.CONFLICT_IGNORE) == -1) continue;
+                ACTIVE_SAF.add(taskId);
+                EnqueueResult result = engine.enqueue(engineId, request);
+                if (result.state() != EnqueueState.QUEUED) {
+                    ACTIVE_SAF.remove(taskId);
+                    if (result.state() == EnqueueState.SKIPPED) {
+                        database(context).delete("tasks", "id=?", new String[]{Long.toString(taskId)});
+                    } else failed(context, taskId, "enqueue");
+                }
+                return result;
+            } catch (RuntimeException error) {
+                ACTIVE_SAF.remove(taskId);
+                failed(context, taskId, "enqueue");
+                return EnqueueResult.failed(error);
+            }
+        }
+        return EnqueueResult.failed(new IllegalStateException("No free download history ID"));
+    }
+
+    public static void engineCompleted(Context context, int engineId, String uri) {
+        published(context, -(long) engineId, uri == null ? "" : uri);
+    }
+
+    public static void engineFailed(Context context, int engineId, String reason) {
+        failed(context, -(long) engineId, reason);
     }
 
     public static void enqueueFailed(Context context, String url, String file, String mime,
@@ -184,20 +235,15 @@ public final class DownloadTaskStore {
             boolean success = false;
             try {
                 if (url != null && (url.startsWith("https://") || url.startsWith("http://"))) {
-                    DownloadDestination.MediaKind kind = DownloadDestination.mediaKindFor(mime);
-                    DownloadDestination.Target target = DownloadDestination.reserve(
-                            app, kind, file, mime, DownloadDestination.conflictPolicy());
-                    if (target != null) {
-                        long id = queuedSaf(app, url, target.fileName(), mime, post, author);
-                        try {
-                            success = DownloadDestination.save(app, target, url, 0);
-                        } catch (RuntimeException exception) {
-                            DownloadDestination.discard(app, target);
-                        }
-                        if (success) {
-                            published(app, id, target.documentUri().toString());
-                            retried(app, oldId);
-                        } else failed(app, id, "transfer");
+                    NewXDownloadFolders.MediaKind kind = NewXDownloadFolders.mediaKindFor(mime);
+                    DownloadEngine engine = NewXDownloader.get();
+                    if (engine != null) {
+                        DownloadRequest request = new DownloadRequest(url, Collections.emptyList(),
+                                NewXDownloadFolders.treeUri(kind), Collections.emptyList(), file, mime,
+                                NewXDownloadFolders.conflictPolicy(), author);
+                        EnqueueResult result = enqueueTracked(app, engine, request, post, author);
+                        success = result.state() == EnqueueState.QUEUED;
+                        if (success) retried(app, oldId);
                     }
                 }
             } catch (Exception ignored) {

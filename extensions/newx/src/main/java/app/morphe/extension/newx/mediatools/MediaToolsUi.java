@@ -14,7 +14,7 @@ import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import app.morphe.extension.newx.settings.NewXSettingsUi;
+import app.morphe.extension.crimera.settings.SettingsUi;
 import app.morphe.extension.newx.ui.Theme;
 import app.morphe.extension.shared.StringRef;
 
@@ -33,7 +33,7 @@ public final class MediaToolsUi {
                 shape(c, color, radius), shape(c, Color.WHITE, radius)));
     }
     public static TextView label(Context c, String value, int size, boolean secondary) {
-        TextView label = secondary ? NewXSettingsUi.summaryText(c) : NewXSettingsUi.titleText(c);
+        TextView label = secondary ? SettingsUi.summaryText(c) : SettingsUi.titleText(c);
         label.setText(value); label.setTextSize(size); return label;
     }
     public static TextView chip(Context c, String title, boolean selected) {

@@ -11,7 +11,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import app.morphe.extension.shared.Utils;
-import app.morphe.extension.newx.settings.SettingsRegistry;
+import app.morphe.extension.crimera.settings.SettingsRegistry;
 
 /** Bounded history, deliberately excluded from Android/settings backup and all diagnostics. */
 public final class MediaHistoryStore {

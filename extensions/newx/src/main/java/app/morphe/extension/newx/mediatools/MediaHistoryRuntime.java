@@ -31,6 +31,7 @@ public final class MediaHistoryRuntime {
         final boolean gallery;
         final WatchSession session = new WatchSession();
         String media;
+        int page = -1;
         Visit(Object owner, boolean video, boolean gallery) {
             this.owner = new WeakReference<>(owner); this.video = video; this.gallery = gallery;
         }
@@ -68,6 +69,7 @@ public final class MediaHistoryRuntime {
                     VISITS.add(visit);
                 }
                 if (video && event != null && isMediaSelectionEvent(event)) visit.media = selectionMediaId(event);
+                if (video && event != null && isVideoPageEvent(event)) visit.page = videoPageEventIndex(event);
                 // Page changes schedule an immediate observation, regardless of playback state.
                 observe(visit);
                 wake();
@@ -144,7 +146,7 @@ public final class MediaHistoryRuntime {
         String media = "";
         if (visit.video) {
             List<?> items = videoItems(owner);
-            int page = videoPage(owner);
+            int page = visit.page >= 0 ? visit.page : videoPage(owner);
             if (items == null || page < 0 || page >= items.size()) return;
             post = items.get(page);
             if (!isTimelinePost(post)) { visit.session.reset(); return; }
@@ -251,6 +253,7 @@ public final class MediaHistoryRuntime {
     private static List<?> galleryMedia(Object post) { throw unpatched(); }
     private static List<?> videoItems(Object owner) { throw unpatched(); }
     private static int videoPage(Object owner) { throw unpatched(); }
+    private static int videoPageEventIndex(Object event) { throw unpatched(); }
     private static List<?> detailItems(Object owner) { throw unpatched(); }
     private static String focalPostId(Object owner) { throw unpatched(); }
     private static String postId(Object post) { throw unpatched(); }

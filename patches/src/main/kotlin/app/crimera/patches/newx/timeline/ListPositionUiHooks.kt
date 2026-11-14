@@ -11,7 +11,8 @@ import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
-import app.morphe.util.getReference
+import app.morphe.patcher.util.getReference
+import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.builder.MethodImplementationBuilder
 import com.android.tools.smali.dexlib2.Opcode
@@ -33,7 +34,7 @@ private fun MutableMethod.calls() = instructions.mapNotNull { it.getReference<Me
 private fun MutableMethod.fields() = instructions.mapNotNull { it.getReference<FieldReference>() }.distinctBy { it.toString() }
 
 context(context: BytecodePatchContext)
-internal fun installListAnchorUi(componentType: String, holder: String, timelineGet: MethodReference,
+internal fun installListAnchorUi(componentType: String, holder: String, positionMethodName: String, timelineGet: MethodReference,
     repoField: FieldReference, identityGet: MethodReference, identityField: FieldReference) {
     val component = context.mutableClassDefBy(componentType)
     val runtime = context.mutableClassDefBy(UI_RUNTIME)
@@ -94,7 +95,7 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
         it.name == flowGetter.name && it.parameterTypes.isEmpty() && it.returnType == flowGetter.returnType
     }.unique("delegating state interface")
     val positionInterface = context.mutableClassDefBy(interfaceField.type).methods.filter {
-        it.returnType==holder && it.parameterTypes.isEmpty()
+        it.name == positionMethodName && it.returnType==holder && it.parameterTypes.isEmpty()
     }.unique("delegating position interface")
     adapter("nativeFlow",2,"""
         check-cast p0, ${interfaceField.type}
@@ -264,20 +265,25 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
     adapter("nativeRequest",3,"check-cast p0, ${lazy.type}\ninvoke-virtual {p0, p1, p2}, $request\nreturn-void")
 
     val regular = Fingerprint(definingClass="Lcom/x/urt/ui/",name="toString",strings=listOf("RegularItem(entryId=",", sortIndex=")).requireSingle("regular UI key")
-    val regularId = regular.fieldForToStringLabel("RegularItem(entryId=")
-    // R8 fused the string builder helper: bind the single long through its constructor instead.
+    // R8 fused the string builder helper: bind both identities through their constructor.
     val keyCtor = context.mutableClassDefBy(regular.originalClassDef.type).methods.filter {
         it.name=="<init>" && it.parameterTypes.map(CharSequence::toString)==listOf(STR,"J")
     }.unique("regular key identity constructor")
     val sortWrite = keyCtor.instructions.filter { it.opcode==Opcode.IPUT_WIDE }.unique("sort identity write")
     val regularSort = sortWrite.getReference<FieldReference>()!!
+    val idWrite = keyCtor.instructions.filter { it.opcode==Opcode.IPUT_OBJECT }.unique("entry identity write")
+    val regularId = idWrite.getReference<FieldReference>()!!
     val constructorStart = keyCtor.implementation!!.registerCount - 4 // this, String, wide sort index
     if(constructorStart < 0 || (sortWrite as TwoRegisterInstruction).registerA!=constructorStart+2 ||
-        sortWrite.registerB!=constructorStart || regular.method.fields().none { it.toString()==regularSort.toString() })
+        sortWrite.registerB!=constructorStart ||
+        (idWrite as TwoRegisterInstruction).registerA!=constructorStart+1 || idWrite.registerB!=constructorStart ||
+        regular.method.fields().none { it.toString()==regularSort.toString() } ||
+        regular.method.fields().none { it.toString()==regularId.toString() })
         throw PatchException("List anchor: constructor sort identity mapping is unproven")
     // Unknown key variants (headers/loading/modules) are not persisted in this first implementation.
     // RegularItem is also used for each vertically expanded module item, preserving exact UI indices.
-    if(regularId.type!=STR || regularSort.type!="J") throw PatchException("List anchor: regular key representation changed")
+    if(regularId.type!=STR || regularSort.type!="J") throw PatchException(
+        "List anchor: regular key representation changed class=${regular.originalClassDef.type} id=$regularId sort=$regularSort")
     adapter("nativeKey",6,"""
         instance-of v0, p0, ${regular.originalClassDef.type}
         if-eqz v0, :unknown
@@ -360,11 +366,50 @@ internal fun installListAnchorUi(componentType: String, holder: String, timeline
     // Keep the List Top-cursor lookup; For You uses its native policy with a
     // viewport-aware request so X can retain the current viewport itself.
     // Do not change AUTO_REFRESH, server instructions, the DB merge, or inject old data.
-    val cursorResolver=component.methods.filter { m -> AccessFlags.STATIC.isSet(m.accessFlags) &&
-        m.parameterTypes.size==3 && m.parameterTypes[0].toString()==componentType &&
-        m.parameterTypes[1].toString().startsWith("Lcom/x/urt/refresh/") && m.returnType==OBJ &&
+    val cursorOptions=component.methods.filter { m -> AccessFlags.STATIC.isSet(m.accessFlags) &&
         m.fields().any { it.name=="Top" && it.definingClass.startsWith("Lcom/x/models/timelines/") }
-    }.unique("native refresh cursor resolver")
+    }
+    val cursorCandidates=cursorOptions.filter { m ->
+        m.parameterTypes.size==3 && m.parameterTypes[0].toString()==componentType &&
+        m.parameterTypes[1].toString().startsWith("Lcom/x/urt/refresh/") && m.returnType==OBJ
+    }
+    if (cursorCandidates.isEmpty()) {
+        // X 12.43 removed the component's Top-cursor resolver. Its repository now
+        // owns refresh requests; only rewrite the proven For You manual request.
+        val requestType="Lcom/x/models/timelines/d;"
+        val request=Fingerprint(definingClass="Lcom/x/repositories/urt/", name="o", returnType="V",
+            parameters=listOf(requestType,"Lcom/x/models/timelines/items/k0;"))
+            .scopedMatchAll().map { it.method }.filter { method ->
+                method.implementation!=null && method.fields().any { it.name=="VIEWPORT_AWARE_AUTO_REFRESH" }
+            }.unique("12.43 repository refresh entry")
+        val repository=context.mutableClassDefBy(request.definingClass)
+        val refresh=repository.methods.filter { it.toString()==request.toString() }
+            .unique("mutable repository refresh entry")
+        val timeline=repository.methods.filter { it.name=="b" && it.parameterTypes.isEmpty() &&
+            it.returnType==timelineGet.returnType }.unique("12.43 repository timeline getter")
+        val requestEnum=context.mutableClassDefBy(requestType)
+        val pull=requestEnum.fields.filter { it.name=="PULL_TO_REFRESH" && it.type==requestType }
+            .unique("pull refresh request")
+        val viewport=requestEnum.fields.filter { it.name=="VIEWPORT_AWARE_AUTO_REFRESH" && it.type==requestType }
+            .unique("viewport refresh request")
+        if (refresh.implementation!!.registerCount-refresh.parameterTypes.size-1 < 1 || refresh.instructions.isEmpty())
+            throw PatchException("List anchor: repository refresh has no scratch register")
+        refresh.addInstructionsWithLabels(0,"""
+            sget-object v0, $pull
+            if-ne p1, v0, :native
+            invoke-virtual {p0}, $timeline
+            move-result-object v0
+            invoke-static {v0}, Lapp/morphe/extension/newx/timeline/ListReadingPosition;->viewportForYou(Ljava/lang/Enum;)Z
+            move-result v0
+            if-eqz v0, :native
+            sget-object p1, $viewport
+            invoke-static {}, $UI_RUNTIME->beginHomeRefresh()V
+        """.trimIndent(), ExternalLabel("native", refresh.instructions.first()))
+        println("List anchor: 12.43 repository pull request uses viewport-aware For You; list keys and UI anchors retained")
+        return
+    }
+    if (cursorCandidates.size != 1) throw PatchException("List anchor: ambiguous cursor resolver")
+    val cursorResolver=cursorCandidates.single()
     val policyType=cursorResolver.parameterTypes[1].toString()
     val topAt=cursorResolver.instructions.withIndex().filter {
         it.value.opcode==Opcode.SGET_OBJECT && it.value.getReference<FieldReference>()?.name=="Top"

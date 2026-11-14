@@ -7,8 +7,10 @@ import app.crimera.patches.newx.models.requirePublicFields
 import app.crimera.patches.newx.models.requireSingle
 import app.crimera.patches.newx.settings.Categories
 import app.crimera.patches.newx.settings.newXToggle
-import app.crimera.patches.newx.settings.settingStrings
+import app.crimera.patches.settings.settingStrings
 import app.crimera.patches.newx.utils.Constants.TIMELINE_FILTER_DESCRIPTOR
+import app.crimera.patches.newx.utils.Constants.COMPATIBILITY_NEW_X
+import app.crimera.patches.newx.utils.unsupportedOnMount
 import app.crimera.patches.utils.scopedMatchAll
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
@@ -20,7 +22,8 @@ import app.morphe.patcher.patch.Compatibility
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
-import app.morphe.util.getReference
+import app.morphe.patcher.util.proxy.mutableTypes.MutableClass
+import app.morphe.patcher.util.getReference
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
@@ -29,15 +32,20 @@ import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 private const val REPOST_FILTER = "Lapp/morphe/extension/newx/timeline/TimelineRepostFilter;"
 private const val HO_OBJECT = "Ljava/lang/Object;"
 private const val HO_STRING = "Ljava/lang/String;"
-private val HOME_OPTIONS_COMPATIBILITY = Compatibility(name = "NewX", packageName = "com.twitter.android",
-    apkFileType = ApkFileType.APKM, appIconColor = 0x000000,
-    targets = listOf(AppTarget(version = "12.22.0-prod.01"), AppTarget(version = "12.28.0-prod.01")))
+private fun MutableClass.patchBridge(name: String, parameters: String, returnType: String, body: String) {
+    val matches = methods.filter { it.name == name &&
+        it.parameterTypes.joinToString("") == parameters && it.returnType == returnType }
+    if (matches.size != 1) throw PatchException("Expected one repost bridge $name, got ${matches.size}")
+    matches.single().addInstructions(0, body.trimIndent())
+}
+private val HOME_OPTIONS_COMPATIBILITY = COMPATIBILITY_NEW_X
 
 @Suppress("unused")
 val homeTimelineRepostsPatch = bytecodePatch(
     name = "NewX: Per-timeline repost visibility",
     description = "Show or hide reposts separately in For You, Following and Lists.",
 ) {
+    unsupportedOnMount()
     compatibleWith(HOME_OPTIONS_COMPATIBILITY)
     dependsOn(newXTimelineModelAdapterPatch)
     for ((order, suffix) in listOf("for_you", "following", "lists").withIndex()) {

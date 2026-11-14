@@ -9,7 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.PopupMenu;
 import app.morphe.extension.newx.settings.NewXSettingsActivity;
-import app.morphe.extension.newx.settings.NewXSettingsFragment;
+import app.morphe.extension.crimera.settings.PikoSettingsFragment;
 import app.morphe.extension.newx.utils.NewXUtils;
 import app.morphe.extension.shared.Utils;
 import kotlin.jvm.functions.Function1;
@@ -80,6 +80,6 @@ public final class HeaderToolsRuntime {
         String destination = intent == null ? null : intent.getStringExtra(DESTINATION);
         if ("downloads".equals(destination)) return new DownloadsFragment();
         if ("history".equals(destination)) return new HistoryFragment();
-        return new NewXSettingsFragment();
+        return new PikoSettingsFragment();
     }
 }

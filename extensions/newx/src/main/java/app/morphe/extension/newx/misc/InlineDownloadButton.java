@@ -725,7 +725,7 @@ public final class InlineDownloadButton {
         return imageUrlWithName(url, "orig");
     }
 
-    static String thumbnailUrlForMedia(String mediaText) {
+    public static String thumbnailUrlForMedia(String mediaText) {
         return thumbnailUrlForImage(thumbnailCacheUrlForMedia(mediaText));
     }
 
@@ -1129,7 +1129,8 @@ public final class InlineDownloadButton {
             return EnqueueState.FAILED;
         }
 
-        EnqueueResult result = engine.enqueue(request);
+        EnqueueResult result = app.morphe.extension.newx.mediatools.DownloadTaskStore.enqueueTracked(
+                context, engine, request, postContext.id, username);
         if (result.state() == EnqueueState.DESTINATION_LOST) {
             NewXDownloadFolders.invalidate(kind);
         }

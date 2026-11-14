@@ -26,16 +26,16 @@ import java.util.ArrayList;
 import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import app.morphe.extension.newx.settings.NewXCustomScreenFragment;
+import app.morphe.extension.crimera.settings.CustomScreenFragment;
 import app.morphe.extension.newx.settings.NewXSettingsActivity;
-import app.morphe.extension.newx.settings.NewXSettingsUi;
+import app.morphe.extension.crimera.settings.SettingsUi;
 import app.morphe.extension.newx.ui.Theme;
 import app.morphe.extension.shared.Utils;
 import static app.morphe.extension.newx.mediatools.MediaToolsUi.*;
 
 /** Private history with on-demand covers. The recording switch lives in settings only. */
 @SuppressWarnings("deprecation")
-public final class HistoryFragment extends NewXCustomScreenFragment {
+public final class HistoryFragment extends CustomScreenFragment {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final List<MediaHistoryStore.Entry> entries = new ArrayList<>();
     private BaseAdapter adapter;
@@ -60,7 +60,7 @@ public final class HistoryFragment extends NewXCustomScreenFragment {
         searchIcon.setClickable(false); searchIcon.setFocusable(false);
         searchIcon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         searchBar.addView(searchIcon, space(c, 40, 48, 0));
-        search = NewXSettingsUi.textInput(c, text("history_search"), android.text.InputType.TYPE_CLASS_TEXT);
+        search = SettingsUi.textInput(c, text("history_search"), android.text.InputType.TYPE_CLASS_TEXT);
         search.setSingleLine(); search.setTextSize(15); search.setBackgroundColor(android.graphics.Color.TRANSPARENT);
         search.setPadding(0, dp(c, 8), 0, dp(c, 8)); search.setMinHeight(dp(c, 52));
         search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);

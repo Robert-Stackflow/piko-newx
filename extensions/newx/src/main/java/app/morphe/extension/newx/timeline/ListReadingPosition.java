@@ -1,6 +1,6 @@
 package app.morphe.extension.newx.timeline;
 
-import app.morphe.extension.newx.settings.SettingsRegistry;
+import app.morphe.extension.crimera.settings.SettingsRegistry;
 
 /** Disables the obsolete ordinal cache only for opted-in Lists. */
 public final class ListReadingPosition {

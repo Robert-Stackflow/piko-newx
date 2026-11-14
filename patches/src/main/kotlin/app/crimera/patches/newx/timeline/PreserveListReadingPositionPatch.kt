@@ -1,8 +1,10 @@
 package app.crimera.patches.newx.timeline
 
 import app.crimera.patches.newx.settings.Categories
+import app.crimera.patches.newx.utils.Constants.COMPATIBILITY_NEW_X
+import app.crimera.patches.newx.utils.unsupportedOnMount
 import app.crimera.patches.newx.settings.newXToggle
-import app.crimera.patches.newx.settings.settingStrings
+import app.crimera.patches.settings.settingStrings
 import app.crimera.patches.utils.scopedMatchAll
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
@@ -15,8 +17,8 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.smali.ExternalLabel
 import app.morphe.patcher.util.smali.toInstruction
-import app.morphe.util.getFreeRegisterProvider
-import app.morphe.util.getReference
+import app.morphe.patcher.util.getFreeRegisterProvider
+import app.morphe.patcher.util.getReference
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MethodImplementationBuilder
@@ -50,9 +52,8 @@ val preserveListReadingPositionPatch = bytecodePatch(
     name = "NewX: Preserve list reading position",
     description = "Restores each account's List by displayed item identity without changing timeline data.",
 ) {
-    compatibleWith(Compatibility(name = "NewX", packageName = "com.twitter.android",
-        apkFileType = ApkFileType.APKM, appIconColor = 0x000000,
-        targets = listOf(AppTarget(version = "12.22.0-prod.01"), AppTarget(version = "12.28.0-prod.01"))))
+    unsupportedOnMount()
+    compatibleWith(COMPATIBILITY_NEW_X)
     dependsOn(restoreTimelinePositionPatch)
     newXToggle(id = "newx.timeline.list_reading_position", category = Categories.TIMELINE,
         strings = settingStrings("piko_newx_list_reading_position"), order = 155,
@@ -168,6 +169,6 @@ val preserveListReadingPositionPatch = bytecodePatch(
             return-void
         """.trimIndent(), ExternalLabel("native", continuation))
 
-        installListAnchorUi(component.type, holder, timelineGet, repoField, identityGet, identityField)
+        installListAnchorUi(component.type, holder, getter.name, timelineGet, repoField, identityGet, identityField)
     }
 }

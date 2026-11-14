@@ -10,7 +10,7 @@ import app.morphe.patcher.patch.*
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patches.all.misc.resources.ResourceType
 import app.morphe.patches.all.misc.resources.getResourceId
-import app.morphe.util.getReference
+import app.morphe.patcher.util.getReference
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.builder.MethodImplementationBuilder
@@ -103,15 +103,21 @@ internal val mediaHeaderPatch = bytecodePatch(default = false) {
             val close = ops.withIndex().filter { (_, instruction) ->
                 val ref = instruction.getReference<MethodReference>()
                 instruction.opcode == Opcode.INVOKE_STATIC && ref?.returnType == "V" &&
-                    ref.parameters() == listOf("Landroidx/compose/runtime/m0;", "Z", "Z", "Z") &&
+                    ref.parameters().size == 4 && ref.parameters().first().startsWith("Landroidx/compose/runtime/") &&
+                    ref.parameters().drop(1) == listOf("Z", "Z", "Z") &&
                     classDefByOrNull(ref.definingClass)?.methods?.any { method ->
                         method.toString() == ref.toString() && method.implementation?.instructions?.let { body ->
                             body.count() == 4 && body.take(3).all { it.opcode == Opcode.INVOKE_VIRTUAL &&
                                 it.getReference<MethodReference>()?.parameters() == listOf("Z") }
                         } == true
                     } == true
-            }.exact("home folded action row close")
-            close.index
+            }
+            if (close.size != 1) {
+                val tail = ops.withIndex().filter { it.value.opcode == Opcode.INVOKE_STATIC }
+                    .takeLast(12).joinToString { "${it.index}:${it.value.getReference<MethodReference>().toString().take(110)}" }
+                throw PatchException("Media header close: method=$home direct=${rowEndCandidates.size} folded=${close.size} staticTail=$tail")
+            }
+            close.single().index
         }
         val composerRegister = (ops[rowEnd] as FiveRegisterInstruction).registerC
         home.addInstructions(rowEnd, "invoke-static/range {v$composerRegister .. v$composerRegister}, $HEADER->home(Ljava/lang/Object;)V")
@@ -155,25 +161,25 @@ internal val mediaHeaderPatch = bytecodePatch(default = false) {
             move-result-object v$out
         """.trimIndent())
         } else {
-            // In X 12.28 the video action content is invoked directly in the shared appbar.
-            // Add our lock child immediately before it, inside the same Compose row.
-            val appbar = Fingerprint(definingClass = "Lcom/x/video/tab/", returnType = "V",
-                parameters = listOf("Lkotlin/jvm/functions/Function0;", MODIFIER,
-                    "Landroidx/compose/runtime/internal/f;", COMPOSER, "I"))
-                .scopedMatchAll().map { it.method }.filter { method -> method.instructions.any { instruction ->
-                    val ref = instruction.getReference<MethodReference>()
-                    instruction.opcode == Opcode.INVOKE_VIRTUAL && ref?.definingClass == "Landroidx/compose/runtime/internal/f;" &&
-                        ref.name == "invoke" && ref.parameters() == listOf("Ljava/lang/Object;", "Ljava/lang/Object;")
-                } }.exact("new video shared appbar")
-            val calls = appbar.instructions.withIndex().filter { (_, instruction) ->
+            // X 12.43 renders the portrait/landscape actions through the same topbar
+            // lambda. Its More icon is the final action in that row; add the lock
+            // child immediately before the icon, using its own Composer argument.
+            val more = Fingerprint(definingClass = "Lcom/x/video/tab/topbar/",
+                filters = listOf(literal(getResourceId(ResourceType.STRING, "more_options"))))
+                .scopedMatchAll().map { it.method }.exact("video topbar More owner")
+            val calls = more.instructions.withIndex().filter { (_, instruction) ->
                 val ref = instruction.getReference<MethodReference>()
-                instruction.opcode == Opcode.INVOKE_VIRTUAL && ref?.definingClass == "Landroidx/compose/runtime/internal/f;" &&
-                    ref.name == "invoke" && ref.parameters() == listOf("Ljava/lang/Object;", "Ljava/lang/Object;") &&
-                    instruction is FiveRegisterInstruction && instruction.registerCount == 3
+                instruction.opcode == Opcode.INVOKE_STATIC_RANGE &&
+                    ref?.definingClass == "Lcom/x/ui/immersive/chrome/b;" && ref.name == "h" &&
+                    ref.parameters().contains(COMPOSER)
             }
-            val actionCall = calls.exact("new video native action invocation")
-            val composerRegister = (actionCall.value as FiveRegisterInstruction).registerD
-            appbar.addInstructions(actionCall.index,
+            val actionCall = calls.exact("video More icon call")
+            val ref = actionCall.value.getReference<MethodReference>()!!
+            val invoke = actionCall.value as RegisterRangeInstruction
+            if (invoke.registerCount != ref.parameters().size || ref.parameters().count { it == COMPOSER } != 1)
+                throw PatchException("Media header: video More call register layout changed")
+            val composerRegister = invoke.startRegister + ref.parameters().indexOf(COMPOSER)
+            more.addInstructions(actionCall.index,
                 "invoke-static/range {v$composerRegister .. v$composerRegister}, $HEADER->video(Ljava/lang/Object;)V")
         }
     }

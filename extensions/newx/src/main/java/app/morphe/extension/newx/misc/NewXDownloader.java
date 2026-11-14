@@ -28,6 +28,7 @@ import app.morphe.extension.crimera.downloader.events.DownloadEvents;
 import app.morphe.extension.crimera.downloader.events.DownloadListener;
 import app.morphe.extension.crimera.downloader.events.FailureReason;
 import app.morphe.extension.crimera.downloader.events.MainThreadExecutor;
+import app.morphe.extension.newx.mediatools.DownloadTaskStore;
 import app.morphe.extension.crimera.downloader.model.DownloadRequest;
 import app.morphe.extension.newx.settings.NewXLogger;
 import app.morphe.extension.shared.Utils;
@@ -116,6 +117,19 @@ public final class NewXDownloader {
                 new StatusListener(applicationContext, created),
                 new MainThreadExecutor()
         );
+        Context taskContext = applicationContext;
+        events.register(new DownloadListener() {
+            @Override public void onCompleted(DownloadEvent.Completed event) {
+                DownloadTaskStore.engineCompleted(taskContext, event.id(),
+                        event.uri() == null ? "" : event.uri().toString());
+            }
+            @Override public void onFailed(DownloadEvent.Failed event) {
+                DownloadTaskStore.engineFailed(taskContext, event.id(), event.reason().name());
+            }
+            @Override public void onCancelled(DownloadEvent.Cancelled event) {
+                DownloadTaskStore.engineFailed(taskContext, event.id(), "cancelled");
+            }
+        }, Runnable::run);
         DownloadControllers.install(created);
         engine = created;
     }

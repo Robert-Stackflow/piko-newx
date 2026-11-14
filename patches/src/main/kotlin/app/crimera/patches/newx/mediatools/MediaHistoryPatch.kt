@@ -1,9 +1,14 @@
 package app.crimera.patches.newx.mediatools
 
+import app.crimera.patches.newx.utils.unsupportedOnMount
+
 import app.crimera.patches.newx.models.*
 import app.crimera.patches.newx.settings.*
+import app.crimera.patches.settings.choice
+import app.crimera.patches.settings.settingStrings
 import app.crimera.patches.newx.timeline.postfilter.newXTimelineTextModelAdapterPatch
 import app.crimera.patches.newx.utils.Constants.TIMELINE_FILTER_DESCRIPTOR
+import app.crimera.patches.newx.utils.Constants.COMPATIBILITY_NEW_X
 import app.crimera.patches.utils.scopedMatchAll
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
@@ -11,8 +16,8 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLa
 import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patcher.patch.*
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
-import app.morphe.util.getReference
-import app.morphe.util.registersUsed
+import app.morphe.patcher.util.getReference
+import app.morphe.patcher.util.registersUsed
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MethodImplementationBuilder
@@ -36,26 +41,25 @@ val mediaHistoryPatch = bytecodePatch(
     name = "NewX: Local post and video history",
     description = "Private history of opened posts, photo galleries and foreground video pages, including video swipes.",
 ) {
-    compatibleWith(Compatibility(name = "NewX", packageName = "com.twitter.android", apkFileType = ApkFileType.APKM,
-        appIconColor = 0x000000, targets = listOf(AppTarget(version = "12.22.0-prod.01"), AppTarget(version = "12.28.0-prod.01"))))
+    unsupportedOnMount()
+    compatibleWith(COMPATIBILITY_NEW_X)
     dependsOn(newXTimelineTextModelAdapterPatch, newXPostMediaModelResolutionPatch, mediaHeaderPatch)
-    newXSettings {
-        category(Categories.POST_ACTIONS_MEDIA) {
-            customScreen(id = "newx.media_tools.downloads", strings = settingStrings("piko_newx_tools_downloads"), order = 509,
-                fragmentClassDescriptor = "Lapp/morphe/extension/newx/mediatools/DownloadsFragment;")
-            customScreen(id = "newx.media_tools.history", strings = settingStrings("piko_newx_tools_history"), order = 510,
-                fragmentClassDescriptor = "Lapp/morphe/extension/newx/mediatools/HistoryFragment;")
-            toggle(id = "newx.media_tools.history_enabled", strings = settingStrings("piko_newx_tools_history_enabled"),
-                order = 511, defaultValue = false)
-            toggle(id = "newx.media_tools.resume_video", strings = settingStrings("piko_newx_tools_resume_video"),
-                order = 513, defaultValue = false)
-            toggle(id = "newx.media_tools.touch_lock", strings = settingStrings("piko_newx_tools_touch_lock"),
-                order = 514, defaultValue = false)
-            singleChoice(id = "newx.media_tools.history_days", strings = settingStrings("piko_newx_tools_history_days"),
-                order = 512, defaultValue = "30", options = listOf(choice("7", "piko_newx_tools_days_7"),
-                    choice("30", "piko_newx_tools_days_30"), choice("90", "piko_newx_tools_days_90")))
-        }
-    }
+    newXCustomScreen(id = "newx.media_tools.downloads", category = Categories.POST_ACTIONS_MEDIA,
+        strings = settingStrings("piko_newx_tools_downloads"), order = 509,
+        fragmentClassDescriptor = "Lapp/morphe/extension/newx/mediatools/DownloadsFragment;")
+    newXCustomScreen(id = "newx.media_tools.history", category = Categories.POST_ACTIONS_MEDIA,
+        strings = settingStrings("piko_newx_tools_history"), order = 510,
+        fragmentClassDescriptor = "Lapp/morphe/extension/newx/mediatools/HistoryFragment;")
+    newXToggle(id = "newx.media_tools.history_enabled", category = Categories.POST_ACTIONS_MEDIA,
+        strings = settingStrings("piko_newx_tools_history_enabled"), order = 511, defaultValue = false)
+    newXToggle(id = "newx.media_tools.resume_video", category = Categories.POST_ACTIONS_MEDIA,
+        strings = settingStrings("piko_newx_tools_resume_video"), order = 513, defaultValue = false)
+    newXToggle(id = "newx.media_tools.touch_lock", category = Categories.POST_ACTIONS_MEDIA,
+        strings = settingStrings("piko_newx_tools_touch_lock"), order = 514, defaultValue = false)
+    newXSingleChoice(id = "newx.media_tools.history_days", category = Categories.POST_ACTIONS_MEDIA,
+        strings = settingStrings("piko_newx_tools_history_days"), order = 512, defaultValue = "30",
+        options = listOf(choice("7", "piko_newx_tools_days_7"), choice("30", "piko_newx_tools_days_30"),
+            choice("90", "piko_newx_tools_days_90")))
     execute {
         val runtime = mutableClassDefBy(RUNTIME)
         fun bridge(name: String, registers: Int, body: String) {
@@ -120,6 +124,9 @@ val mediaHistoryPatch = bytecodePatch(
         val page = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString", strings = listOf("PageChanged(page="))
             .scopedMatchAll().filter { eventInterface in it.originalClassDef.interfaces }.one("current viewer page event")
         val pageField = page.originalClassDef.fields.filter { it.type == "I" }.one("page event index")
+        expose(pageField)
+        bridge("videoPageEventIndex", 1,
+            "check-cast p0, ${page.originalClassDef.type}\niget p0, p0, $pageField\nreturn p0")
         val dispatcher = Fingerprint(definingClass = "Lcom/x/video/tab/", returnType = "V", parameters = listOf(eventInterface))
             .scopedMatchAll().map { it.method }.filter { m -> m.fields().any { it.toString() == selectionField.toString() } &&
                 m.fields().any { it.toString() == pageField.toString() } }.one("viewer event dispatcher")
@@ -137,6 +144,28 @@ val mediaHistoryPatch = bytecodePatch(
                 throw PatchException("Media history: invalid current-page owner")
             expose(currentPage)
             bridge("videoPage", 1, "check-cast p0, ${video.type}\niget p0, p0, $currentPage\nreturn p0")
+        } else if (Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString",
+                strings = listOf("PageScrollAdvanced(page="))
+                .scopedMatchAll().isNotEmpty()) {
+            // 12.43 separates the foreground PageChanged event from the event that
+            // commits the page index. The runtime uses the foreground event index
+            // immediately and this committed value for later media-selection events.
+            val advanced = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString",
+                strings = listOf("PageScrollAdvanced(page="))
+                .scopedMatchAll().filter { eventInterface in it.originalClassDef.interfaces }
+                .one("advanced page event")
+            val advancedField = advanced.originalClassDef.fields.filter { it.type == "I" }
+                .one("advanced page index")
+            val committed = dispatcher.instructions.withIndex().mapNotNull { (i, op) ->
+                if (op.opcode != Opcode.IGET || op.getReference<FieldReference>()?.toString() != advancedField.toString())
+                    return@mapNotNull null
+                dispatcher.instructions.drop(i + 1).take(3).firstNotNullOfOrNull { next ->
+                    next.getReference<FieldReference>()?.takeIf { next.opcode == Opcode.IPUT &&
+                        it.definingClass == video.type && it.type == "I" }
+                }
+            }.distinctBy { it.toString() }.one("committed video page index")
+            expose(committed)
+            bridge("videoPage", 1, "check-cast p0, ${video.type}\niget p0, p0, $committed\nreturn p0")
         } else {
             // X 12.28 stores the current pager index in a viewer-owned state object.
             val eventRead = dispatcher.instructions.withIndex().filter { (_, op) ->
@@ -146,17 +175,18 @@ val mediaHistoryPatch = bytecodePatch(
             val owner = following.mapNotNull { op ->
                 if (op.opcode != Opcode.IGET_OBJECT) return@mapNotNull null
                 op.getReference<FieldReference>()?.takeIf { it.definingClass == video.type && it.type.startsWith("Lcom/x/video/tab/") }
-            }.distinctBy { it.toString() }.one("new viewer page-state owner")
+            }.distinctBy { it.toString() }
+            val pageOwner = owner.one("new viewer page-state owner")
             val currentPage = following.mapNotNull { op ->
                 if (op.opcode != Opcode.IGET) return@mapNotNull null
-                op.getReference<FieldReference>()?.takeIf { it.definingClass == owner.type && it.type == "I" &&
+                op.getReference<FieldReference>()?.takeIf { it.definingClass == pageOwner.type && it.type == "I" &&
                     following.any { later -> later.opcode == Opcode.IPUT &&
                         later.getReference<FieldReference>()?.toString() == it.toString() } }
             }.distinctBy { it.toString() }.one("new viewer committed page index")
-            expose(owner); expose(currentPage)
+            expose(pageOwner); expose(currentPage)
             bridge("videoPage", 1, """
                 check-cast p0, ${video.type}
-                iget-object p0, p0, $owner
+                iget-object p0, p0, $pageOwner
                 if-nez p0, :present
                 const/4 p0, -0x1
                 return p0
@@ -215,11 +245,10 @@ val mediaHistoryPatch = bytecodePatch(
         // Resolve its live observed-post state, never its loader/prefetch or click handlers.
         val galleryState = Fingerprint(definingClass = "Lcom/x/media/", name = "toString",
             strings = listOf("MediaGalleryState(owner=", ", observedPost=")).requireSingle("gallery presentation state").originalClassDef
-        val galleryConstructor = Fingerprint(definingClass = "Lcom/x/media/", name = "<init>",
-            strings = listOf("x_lite_immersive_gallery_swipe_enabled"))
-            .requireSingle("gallery component constructor").method
-        if (galleryConstructor.refs().none { it.definingClass == galleryState.type && it.name == "<init>" })
-            throw PatchException("Media history: gallery constructor does not own presentation state")
+        val galleryConstructor = Fingerprint(definingClass = "Lcom/x/media/", name = "<init>")
+            .scopedMatchAll().map { it.method }.filter { method ->
+                method.refs().any { it.definingClass == galleryState.type && it.name == "<init>" }
+            }.one("gallery component constructor owning presentation state")
         val gallery = mutableClassDefBy(galleryConstructor.definingClass)
         val galleryStateWriter = gallery.methods.filter { method -> method.returnType == "V" && method.parameterTypes.isEmpty() &&
             method.refs().any { it.definingClass == galleryState.type && it.returnType == galleryState.type }
@@ -415,16 +444,18 @@ val mediaHistoryPatch = bytecodePatch(
         val mediaId = emitter.refs().filter { it.definingClass == mediaInterface && it.returnType == STR && it.parameterTypes.isEmpty() }.one("selected media ID getter")
         bridge("isVideo", 1, "instance-of p0, p0, ${media.type}\nreturn p0")
         bridge("mediaId", 1, "check-cast p0, $mediaInterface\ninvoke-interface {p0}, $mediaId\nmove-result-object p0\nreturn-object p0")
-        val playback = Fingerprint(definingClass = "Lcom/x/video/tab/", name = "toString",
+        val playback = Fingerprint(definingClass = "Lcom/x/", name = "toString",
             strings = listOf("ImmersivePlaybackState(progress=", ", isSeekable=")).requireSingle("viewer playback state").originalClassDef
         val playbackConstructor = mutableClassDefBy(playback.type).methods.filter {
             it.name == "<init>" && it.parameterTypes.map(CharSequence::toString) in listOf(
                 listOf("F", "J", "J", "Z", "Z", "F"),
-                listOf("F", "J", "J", STR, "Z", "Z", "F")
+                listOf("F", "J", "J", STR, "Z", "Z", "F"),
+                listOf("F", "J", "J", STR, "Z", "Z", "F", "Lkotlin/ranges/ClosedRange;")
             )
         }.one("playback state constructor")
-        val hasPlaybackLabel = playbackConstructor.parameterTypes.size == 7
-        val parameterStart = playbackConstructor.implementation!!.registerCount - if (hasPlaybackLabel) 10 else 9
+        val hasPlaybackLabel = playbackConstructor.parameterTypes.size >= 7
+        val parameterStart = playbackConstructor.implementation!!.registerCount -
+            if (playbackConstructor.parameterTypes.size == 8) 11 else if (hasPlaybackLabel) 10 else 9
         fun stateField(offset: Int, type: String): FieldReference = playbackConstructor.instructions.filter { op ->
             op is TwoRegisterInstruction && op.opcode in listOf(Opcode.IPUT_WIDE, Opcode.IPUT_BOOLEAN) &&
                 op.registerA == parameterStart + offset && op.registerB == parameterStart

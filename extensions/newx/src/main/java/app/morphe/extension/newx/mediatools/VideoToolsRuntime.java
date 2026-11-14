@@ -12,7 +12,7 @@ import android.graphics.Rect;
 import android.graphics.Color;
 import android.widget.FrameLayout;
 import java.lang.ref.WeakReference;
-import app.morphe.extension.newx.settings.SettingsRegistry;
+import app.morphe.extension.crimera.settings.SettingsRegistry;
 import app.morphe.extension.newx.utils.NewXUtils;
 import app.morphe.extension.shared.StringRef;
 import app.morphe.extension.shared.Utils;
