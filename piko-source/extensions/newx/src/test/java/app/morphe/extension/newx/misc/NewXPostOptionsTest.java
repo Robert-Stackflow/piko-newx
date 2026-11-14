@@ -28,11 +28,11 @@ public final class NewXPostOptionsTest {
         List<Group> groups = Collections.singletonList(new Group(Collections.singletonList(Action.Native)));
 
         List<?> first = NewXPostOptions.addOption(groups, Action.None.name(), true);
-        List<?> result = NewXPostOptions.addOption(first, Action.ServerFeedbackAction.name(), true);
+        List<?> result = NewXPostOptions.addOption(first, Action.ViewDebugDialog.name(), true);
 
         assertEquals(2, result.size());
         assertEquals(
-                Arrays.asList(Action.None, Action.ServerFeedbackAction),
+                Arrays.asList(Action.None, Action.ViewDebugDialog),
                 ((Group) result.get(1)).actions
         );
         assertEquals(Collections.singletonList(Action.None), ((Group) first.get(1)).actions);
@@ -62,6 +62,7 @@ public final class NewXPostOptionsTest {
     @Test
     public void identifiesOnlyConfiguredSentinel() {
         assertTrue(NewXPostOptions.isAction(Action.None, NewXPostOptionActions.BROWSE_OBJECT_ACTION));
+        assertTrue(NewXPostOptions.isAction(Action.ViewDebugDialog, NewXPostOptionActions.SHARE_IMAGE_ACTION));
         assertTrue(NewXPostOptions.isAction(Action.ServerFeedbackAction, NewXPostOptionActions.FILTERED_REPLIES_ACTION));
         assertFalse(NewXPostOptions.isAction(Action.Native, NewXPostOptionActions.BROWSE_OBJECT_ACTION));
         assertFalse(NewXPostOptions.isAction(null, NewXPostOptionActions.BROWSE_OBJECT_ACTION));
@@ -80,6 +81,7 @@ public final class NewXPostOptionsTest {
     private enum Action {
         Native,
         None,
+        ViewDebugDialog,
         ServerFeedbackAction,
     }
 

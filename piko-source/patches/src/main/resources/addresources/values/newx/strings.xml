@@ -562,7 +562,6 @@
     <string name="piko_newx_l10n_allocate_image_failed">Could not allocate the post image</string>
     <string name="piko_newx_l10n_save_post_failed">Could not save the post image</string>
     <string name="piko_newx_l10n_already_downloaded">Already downloaded</string>
-    <string name="piko_newx_l10n_set_download_folder">Set a download folder in Download options</string>
     <string name="piko_newx_l10n_could_not_save">Could not save %1$s</string>
     <string name="piko_newx_l10n_media_already_downloaded">%1$d media already downloaded</string>
     <string name="piko_newx_list_reading_position_title">Restore List reading position</string>
