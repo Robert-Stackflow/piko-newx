@@ -487,7 +487,7 @@
     <string name="piko_newx_translation_translator_title">Translator</string>
     <string name="piko_newx_translation_translator_summary">Choose a free or custom translator and the target language</string>
     <string name="piko_newx_force_highest_video_quality_title">Force highest video and audio quality</string>
-    <string name="piko_newx_force_highest_video_quality_summary">Plays videos and audio at the highest available stream quality without adaptive quality downscaling or network bitrate caps</string>
+    <string name="piko_newx_force_highest_video_quality_summary">Selects the highest supported playback bitrate and removes audio/video bitrate caps. May increase data use and buffering. Restart after changing. Does not affect downloads.</string>
     <string name="piko_newx_group_dynamic_colors_title">Dynamic colors</string>
     <string name="piko_newx_group_dynamic_colors_summary">Customize Material You colors and themed accent behavior</string>
     <string name="piko_newx_dynamic_color_title">Use dynamic colors</string>
