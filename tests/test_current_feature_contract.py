@@ -34,6 +34,10 @@ class CurrentFeatureContract(unittest.TestCase):
                 "NewX: Local post and video history",),
             "mediatools/MediaHeaderPatch.kt": ("HeaderToolsRuntime",),
             "misc/shareimage/ShareImagePatch.kt": ("NewX: Share post as image",),
+            "misc/mediaquality/ForceHighestVideoQualityPatch.kt": (
+                "NewX: Force highest video/audio quality",
+                "newx.post_actions_media.force_highest_video_quality",
+            ),
         }
         base = SOURCE / "patches/src/main/kotlin/app/crimera/patches/newx"
         for relative, markers in patches.items():

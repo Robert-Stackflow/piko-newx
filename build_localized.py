@@ -25,7 +25,7 @@ def main():
     if config.get("source_mode") not in (None, "vendored"):
         raise ValueError("Unsupported source_mode")
     if vendored:
-        subprocess.run([os.sys.executable, "-m", "unittest", "tests.test_current_feature_contract"],
+        subprocess.run([os.sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_current_feature_contract.py"],
                        cwd=ROOT, check=True)
     resume = sys.argv[1:] == ["--resume"]
     if resume:
