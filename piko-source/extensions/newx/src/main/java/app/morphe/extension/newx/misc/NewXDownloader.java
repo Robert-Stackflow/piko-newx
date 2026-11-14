@@ -183,7 +183,7 @@ public final class NewXDownloader {
                         NewXLogger.printException(() -> "Could not invalidate lost destination", e);
                     }
                 }
-                InlineDownloadButton.reportDownloadStatus(InlineDownloadButton.FOLDER_LOST_MESSAGE, label);
+                InlineDownloadButton.reportDownloadStatus(InlineDownloadButton.folderLostMessage(), label);
             } else if (event.reason() == FailureReason.NO_CONNECTION) {
                 InlineDownloadButton.reportDownloadStatus("No connection — tap Retry when online", label);
             } else {
