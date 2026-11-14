@@ -4,6 +4,7 @@ import json
 import subprocess
 import unittest
 from pathlib import Path
+from xml.etree import ElementTree
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,6 +33,7 @@ class CurrentFeatureContract(unittest.TestCase):
             "mediatools/MediaHistoryPatch.kt": (
                 "NewX: Local post and video history",),
             "mediatools/MediaHeaderPatch.kt": ("HeaderToolsRuntime",),
+            "misc/shareimage/ShareImagePatch.kt": ("NewX: Share post as image",),
         }
         base = SOURCE / "patches/src/main/kotlin/app/crimera/patches/newx"
         for relative, markers in patches.items():
@@ -50,12 +52,20 @@ class CurrentFeatureContract(unittest.TestCase):
             "mediatools/MediaHistoryRuntime.java",
             "mediatools/VideoToolsRuntime.java",
             "misc/LocalizedDownloadTexts.java",
+            "misc/NewXShareImageHandler.java",
         ):
             with self.subTest(file=relative):
                 self.assertTrue((base / relative).is_file())
         zh = SOURCE / "patches/src/main/resources/addresources/values-zh-rCN/newx/strings.xml"
         self.assertTrue(zh.is_file())
         self.assertIn("piko_newx", zh.read_text(encoding="utf-8"))
+
+    def test_resource_keys_are_unique(self):
+        root = SOURCE / "patches/src/main/resources/addresources"
+        for relative in ("values/newx/strings.xml", "values-zh-rCN/newx/strings.xml"):
+            with self.subTest(file=relative):
+                names = [item.get("name") for item in ElementTree.parse(root / relative).getroot()]
+                self.assertEqual(len(names), len(set(names)))
 
 
 if __name__ == "__main__":
