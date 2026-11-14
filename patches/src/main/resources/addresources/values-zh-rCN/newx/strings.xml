@@ -491,7 +491,6 @@
     <string name="piko_newx_l10n_allocate_image_failed">无法为帖子图片分配内存</string>
     <string name="piko_newx_l10n_save_post_failed">无法保存帖子图片</string>
     <string name="piko_newx_l10n_already_downloaded">已下载</string>
-    <string name="piko_newx_l10n_set_download_folder">请在下载选项中设置保存文件夹</string>
     <string name="piko_newx_l10n_could_not_save">无法保存 %1$s</string>
     <string name="piko_newx_l10n_media_already_downloaded">%1$d 项媒体已下载</string>
     <string name="piko_newx_list_reading_position_title">恢复列表阅读位置</string>
