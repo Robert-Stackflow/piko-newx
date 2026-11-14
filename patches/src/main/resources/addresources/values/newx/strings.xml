@@ -541,6 +541,10 @@
     <string name="piko_newx_l10n_skipped_count">%1$d already downloaded or queued</string>
     <string name="piko_newx_l10n_failed_one">1 failed</string>
     <string name="piko_newx_l10n_failed_count">%1$d failed</string>
+    <string name="piko_newx_l10n_folder_lost">Download folder is no longer available — tap download again to choose a new one</string>
+    <string name="piko_newx_l10n_folder_lost_one">1 needs a new folder</string>
+    <string name="piko_newx_l10n_folder_lost_count">%1$d need a new folder</string>
+    <string name="piko_newx_l10n_set_download_folder">Set a download folder in Download options</string>
     <string name="piko_newx_l10n_merge_minimum">At least 2 images are required to merge</string>
     <string name="piko_newx_l10n_merging">Downloading and merging %1$d images...</string>
     <string name="piko_newx_l10n_slice_download_failed">Failed to download image slice %1$d</string>

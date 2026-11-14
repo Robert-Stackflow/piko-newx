@@ -162,7 +162,7 @@ public final class NativeDownloadRouter {
             case SKIPPED -> postStatus("Already downloaded", username);
             case DESTINATION_LOST -> {
                 NewXDownloadFolders.invalidate(kind);
-                postStatus(InlineDownloadButton.FOLDER_LOST_MESSAGE, username);
+                postStatus(InlineDownloadButton.folderLostMessage(), username);
             }
             case FAILED -> postStatus("Could not start download", username);
         }

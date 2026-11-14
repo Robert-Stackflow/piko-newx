@@ -470,6 +470,10 @@
     <string name="piko_newx_l10n_skipped_count">%1$d 项已下载或已加入队列</string>
     <string name="piko_newx_l10n_failed_one">1 项失败</string>
     <string name="piko_newx_l10n_failed_count">%1$d 项失败</string>
+    <string name="piko_newx_l10n_folder_lost">下载文件夹已不可用，请再次点击下载以重新选择</string>
+    <string name="piko_newx_l10n_folder_lost_one">1 项需要重新选择文件夹</string>
+    <string name="piko_newx_l10n_folder_lost_count">%1$d 项需要重新选择文件夹</string>
+    <string name="piko_newx_l10n_set_download_folder">请先在下载选项中设置下载文件夹</string>
     <string name="piko_newx_l10n_merge_minimum">至少需要 2 张图片才能合并</string>
     <string name="piko_newx_l10n_merging">正在下载并合并 %1$d 张图片…</string>
     <string name="piko_newx_l10n_slice_download_failed">第 %1$d 张分割图片下载失败</string>
