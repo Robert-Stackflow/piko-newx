@@ -1,5 +1,7 @@
 package app.morphe.extension.newx.misc;
 
+import static app.morphe.extension.shared.StringRef.str;
+
 import android.app.Activity;
 import android.content.Context;
 
@@ -21,7 +23,6 @@ public final class FilteredRepliesPostOptionHandler {
     private static final String FILTERED_REPLIES_MENU_SETTING_ID =
             "newx.content.verified_account_filtering.filtered_replies_menu";
     private static final String URT_POST_CLASS = "com.x.models.timelines.items.UrtTimelinePost";
-    private static final String OPTION_LABEL = "Filtered replies";
 
     private FilteredRepliesPostOptionHandler() {
     }
@@ -31,7 +32,7 @@ public final class FilteredRepliesPostOptionHandler {
     }
 
     public static String labelFor(Object action, Object originalLabel) {
-        if (isFilteredRepliesAction(action)) return OPTION_LABEL;
+        if (isFilteredRepliesAction(action)) return str("piko_newx_filtered_replies_option_label");
         return originalLabel instanceof String ? (String) originalLabel : null;
     }
 
@@ -47,19 +48,19 @@ public final class FilteredRepliesPostOptionHandler {
             Context context = presenterData.getContext();
             Object post = presenterData.getValue();
             if (context == null || post == null) {
-                Utils.showToastShort("Could not find the selected post");
+                Utils.showToastShort(str("piko_newx_l10n_post_missing"));
                 return true;
             }
 
             Activity activity = NewXUtils.findUsableActivity(context);
             if (activity == null) {
-                Utils.showToastShort("Could not find the active screen");
+                Utils.showToastShort(str("piko_newx_l10n_screen_missing"));
                 return true;
             }
 
             String postId = NewXUtils.identifierToString(NewXUtils.invoke(post, "getId"));
             if (postId == null || postId.isEmpty()) {
-                Utils.showToastShort("Could not identify the selected post");
+                Utils.showToastShort(str("piko_newx_l10n_post_unidentified"));
                 return true;
             }
 
@@ -67,7 +68,7 @@ public final class FilteredRepliesPostOptionHandler {
             return true;
         } catch (Exception exception) {
             NewXLogger.printException(() -> "Failed to handle filtered replies option", exception);
-            Utils.showToastShort("Could not open filtered replies");
+            Utils.showToastShort(str("piko_newx_l10n_filtered_open_failed"));
             return true;
         }
     }

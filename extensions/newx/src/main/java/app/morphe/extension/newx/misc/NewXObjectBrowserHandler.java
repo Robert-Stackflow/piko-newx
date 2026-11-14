@@ -1,5 +1,7 @@
 package app.morphe.extension.newx.misc;
 
+import static app.morphe.extension.shared.StringRef.str;
+
 import android.app.Activity;
 import android.content.Context;
 
@@ -15,7 +17,6 @@ public final class NewXObjectBrowserHandler {
     private static final String OPTION_NAME = NewXPostOptionActions.BROWSE_OBJECT_ACTION;
     private static final String SETTING_ID = "newx.content.browse_tweet_object";
     private static final String URT_POST_CLASS = "com.x.models.timelines.items.UrtTimelinePost";
-    private static final String OPTION_LABEL = "Browse Tweet Object";
 
     private NewXObjectBrowserHandler() {
     }
@@ -25,7 +26,7 @@ public final class NewXObjectBrowserHandler {
     }
 
     public static String labelFor(Object action, Object originalLabel) {
-        if (isBrowseObjectAction(action)) return OPTION_LABEL;
+        if (isBrowseObjectAction(action)) return str("piko_newx_browse_tweet_object_title");
         return originalLabel instanceof String ? (String) originalLabel : null;
     }
 
@@ -40,15 +41,15 @@ public final class NewXObjectBrowserHandler {
             NewXUtils.PresenterData presenterData = NewXUtils.findPresenterData(presenter, URT_POST_CLASS);
             Context context = presenterData.getContext();
             Object post = presenterData.getValue();
-            if (context == null || post == null) return fail("Could not find the selected post");
+            if (context == null || post == null) return fail(str("piko_newx_l10n_post_missing"));
 
             Activity activity = NewXUtils.findUsableActivity(context);
-            if (activity == null) return fail("Could not find the active screen");
+            if (activity == null) return fail(str("piko_newx_l10n_screen_missing"));
 
             NewXUtils.runOnUiThread(() -> ObjectBrowser.browseObject(activity, post));
             return true;
         } catch (IllegalAccessException | RuntimeException exception) {
-            return fail("Could not find the selected post");
+            return fail(str("piko_newx_l10n_post_missing"));
         }
     }
 

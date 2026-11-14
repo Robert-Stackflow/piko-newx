@@ -1,5 +1,7 @@
 package app.morphe.extension.newx.misc;
 
+import static app.morphe.extension.shared.StringRef.str;
+
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -76,11 +78,11 @@ public final class MediaPickerDialog {
         }
 
         BottomSheetView dialog = new BottomSheetView(current);
-        dialog.setTitle("Download media");
+        dialog.setTitle(str("piko_newx_l10n_download_media"));
 
         String defaultSubtitle = (username != null && !username.trim().isEmpty())
-                ? "From @" + username.trim()
-                : "Select media to save to your device";
+                ? str("piko_newx_l10n_media_from", username.trim())
+                : str("piko_newx_l10n_media_subtitle");
         dialog.setSubtitle(defaultSubtitle);
 
         LinearLayout listContainer = new LinearLayout(current);
@@ -119,7 +121,7 @@ public final class MediaPickerDialog {
             mergeButton = new ButtonView(
                     current,
                     ButtonView.ButtonStyle.TONAL,
-                    "Download & Merge"
+                    str("piko_newx_l10n_download_merge")
             );
             dialog.addButton(mergeButton);
         } else {
@@ -130,7 +132,7 @@ public final class MediaPickerDialog {
         final ButtonView downloadButton = new ButtonView(
                 current,
                 ButtonView.ButtonStyle.FILLED,
-                hasMultiple ? "Download All (" + downloads.size() + ")" : "Download (1)"
+                hasMultiple ? str("piko_newx_l10n_download_all", downloads.size()) : str("piko_newx_l10n_download_one")
         );
         if (!hasMultiple) {
             downloadButton.setVisibility(View.GONE);
@@ -160,19 +162,19 @@ public final class MediaPickerDialog {
             }
 
             if (isSelectionMode[0]) {
-                dialog.setTitle("Select media");
-                dialog.setSubtitle(selectedCount + " of " + downloads.size() + " selected");
+                dialog.setTitle(str("piko_newx_l10n_select_media"));
+                dialog.setSubtitle(str("piko_newx_l10n_selected_count", selectedCount, downloads.size()));
                 downloadButton.setEnabled(true);
                 if (selectedCount == downloads.size()) {
-                    downloadButton.setText("Download All (" + downloads.size() + ")");
+                    downloadButton.setText(str("piko_newx_l10n_download_all", downloads.size()));
                 } else {
-                    downloadButton.setText("Download (" + selectedCount + ")");
+                    downloadButton.setText(str("piko_newx_l10n_download_count", selectedCount));
                 }
                 downloadButton.setVisibility(View.VISIBLE);
 
                 if (mergeButton != null) {
                     if (selectedImageCount >= 2) {
-                        mergeButton.setText("Merge (" + selectedImageCount + ")");
+                        mergeButton.setText(str("piko_newx_l10n_merge_count", selectedImageCount));
                         mergeButton.setVisibility(View.VISIBLE);
                         mergeButton.setEnabled(true);
                     } else {
@@ -180,18 +182,18 @@ public final class MediaPickerDialog {
                     }
                 }
             } else {
-                dialog.setTitle("Download media");
+                dialog.setTitle(str("piko_newx_l10n_download_media"));
                 dialog.setSubtitle(defaultSubtitle);
                 downloadButton.setEnabled(true);
                 if (hasMultiple) {
-                    downloadButton.setText("Download All (" + downloads.size() + ")");
+                    downloadButton.setText(str("piko_newx_l10n_download_all", downloads.size()));
                     downloadButton.setVisibility(View.VISIBLE);
                 } else {
                     downloadButton.setVisibility(View.GONE);
                 }
 
                 if (mergeButton != null) {
-                    mergeButton.setText("Download & Merge");
+                    mergeButton.setText(str("piko_newx_l10n_download_merge"));
                     mergeButton.setVisibility(View.VISIBLE);
                     mergeButton.setEnabled(true);
                 }
@@ -264,7 +266,12 @@ public final class MediaPickerDialog {
             InlineDownloadButton.DownloadItem item = downloads.get(i);
 
             ListItem itemRow = new ListItem(current, themeSettings);
-            itemRow.setTitle(item.label + (hasMultiple ? " " + (i + 1) : ""));
+            String localizedLabel = switch (item.label) {
+                case "Image" -> str("piko_newx_l10n_image");
+                case "Video" -> str("piko_newx_l10n_video");
+                default -> item.label;
+            };
+            itemRow.setTitle(localizedLabel + (hasMultiple ? " " + (i + 1) : ""));
             itemRow.setSubtitle(item.resolution);
 
             IconView.IconType iconType = resolveIconType(item);
@@ -457,7 +464,7 @@ public final class MediaPickerDialog {
                     v -> {
                         dialog.dismiss();
                         Utils.setClipboard(item.url);
-                        Utils.showToastShort("Link copied");
+                        Utils.showToastShort(str("piko_newx_l10n_link_copied"));
                     }
             );
         }

@@ -1,5 +1,7 @@
 package app.morphe.extension.newx.filteredreplies;
 
+import static app.morphe.extension.shared.StringRef.str;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.ColorStateList;
@@ -51,17 +53,17 @@ public final class FilteredRepliesDialog {
                 FilteredRepliesStore.shared().getReplies(postId);
 
         if (replies.isEmpty()) {
-            Utils.showToastShort("No filtered replies for this post");
+            Utils.showToastShort(str("piko_newx_filtered_replies_empty"));
             return;
         }
 
         BottomSheetView sheet = new BottomSheetView(activity);
-        sheet.setTitle("Filtered replies");
+        sheet.setTitle(str("piko_newx_filtered_replies_dialog_title"));
 
         int count = replies.size();
         String subtitle = count == 1
-                ? "1 reply hidden by verified accounts filter"
-                : count + " replies hidden by verified accounts filter";
+                ? str("piko_newx_l10n_filtered_count_one")
+                : str("piko_newx_l10n_filtered_count", count);
         sheet.setSubtitle(subtitle);
 
         LinearLayout listContainer = new LinearLayout(activity);
@@ -116,7 +118,7 @@ public final class FilteredRepliesDialog {
             String text = reply.getPostText();
             if (!text.isEmpty()) {
                 Utils.setClipboard(text);
-                Utils.showToastShort("Copied reply text");
+                Utils.showToastShort(str("piko_newx_filtered_replies_copied"));
             }
             return true;
         });
@@ -149,7 +151,13 @@ public final class FilteredRepliesDialog {
         String badgeType = reply.getAuthorVerifiedType();
         if (!badgeType.isEmpty()) {
             TextView badgeView = new TextView(context);
-            badgeView.setText(badgeType);
+            badgeView.setText(switch (badgeType.toLowerCase(Locale.ROOT)) {
+                case "business" -> str("piko_newx_hide_verified_account_types_business");
+                case "government" -> str("piko_newx_hide_verified_account_types_government");
+                case "user" -> str("piko_newx_hide_verified_account_types_user");
+                case "unknown" -> str("piko_newx_hide_verified_account_types_unknown");
+                default -> badgeType;
+            });
             badgeView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
             badgeView.setTypeface(UpdateFont.customTypefaceOr(Typeface.DEFAULT));
             badgeView.setTextColor(Theme.secondaryText(context));
@@ -177,7 +185,7 @@ public final class FilteredRepliesDialog {
         TextView textView = new TextView(context);
         String postText = reply.getPostText();
         if (postText.isEmpty()) {
-            textView.setText("(No text content)");
+            textView.setText(str("piko_newx_l10n_no_text"));
             textView.setTypeface(UpdateFont.customTypefaceOr(Typeface.defaultFromStyle(Typeface.ITALIC)));
         } else {
             textView.setText(postText);
@@ -223,7 +231,7 @@ public final class FilteredRepliesDialog {
     }
 
     private static void setWhitelistedState(ButtonView button) {
-        button.setText("Whitelisted ✓");
+        button.setText(str("piko_newx_filtered_replies_whitelisted"));
         button.setButtonStyle(ButtonView.ButtonStyle.TONAL);
         button.setEnabled(false);
         button.setOnClickListener(null);
@@ -234,17 +242,17 @@ public final class FilteredRepliesDialog {
             String screenName,
             Map<String, List<ButtonView>> authorButtons
     ) {
-        button.setText("+ Whitelist");
+        button.setText(str("piko_newx_filtered_replies_whitelist_add"));
         button.setButtonStyle(ButtonView.ButtonStyle.FILLED);
         button.setEnabled(true);
         button.setOnClickListener(v -> {
             try {
                 VerifiedAccountWhitelistStore.shared().add(screenName);
-                Utils.showToastShort("Added @" + screenName + " to whitelist");
+                Utils.showToastShort(str("piko_newx_filtered_replies_whitelist_added", screenName));
             } catch (VerifiedAccountWhitelistStore.ValidationException e) {
-                Utils.showToastShort("@" + screenName + " is already whitelisted");
+                Utils.showToastShort(str("piko_newx_l10n_already_whitelisted", screenName));
             } catch (Exception e) {
-                Utils.showToastShort("Failed to whitelist: " + e.getMessage());
+                Utils.showToastShort(str("piko_newx_l10n_whitelist_failed", e.getMessage()));
             }
             updateAuthorButtons(authorButtons, screenName);
         });

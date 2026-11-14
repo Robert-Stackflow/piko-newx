@@ -1,5 +1,7 @@
 package app.morphe.extension.newx.timeline;
 
+import static app.morphe.extension.shared.StringRef.str;
+
 import android.app.Activity;
 import android.content.Context;
 import android.os.Looper;
@@ -11,10 +13,10 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-import app.morphe.extension.crimera.settings.SettingsUi;
+import app.morphe.extension.newx.settings.NewXSettingsUi;
 import app.morphe.extension.newx.settings.NewXLogger;
 import app.morphe.extension.newx.ui.BottomSheetView;
-import app.morphe.extension.crimera.ui.ButtonView;
+import app.morphe.extension.newx.ui.ButtonView;
 import app.morphe.extension.newx.utils.NewXUtils;
 import app.morphe.extension.shared.Utils;
 
@@ -57,16 +59,16 @@ final class ForYouTopicFilterSheet {
             LinkedHashSet<String> selected = new LinkedHashSet<>(storedSelection);
 
             BottomSheetView sheet = new BottomSheetView(activity);
-            sheet.setTitle("For You topics");
-            sheet.setSubtitle("Select topics to show in your For You timeline");
+            sheet.setTitle(str("piko_newx_l10n_topics_title"));
+            sheet.setSubtitle(str("piko_newx_l10n_topics_subtitle"));
 
             LinearLayout body = new LinearLayout(activity);
             body.setOrientation(LinearLayout.VERTICAL);
 
-            List<SettingsUi.SwitchRow> rows = new ArrayList<>();
+            List<NewXSettingsUi.SwitchRow> rows = new ArrayList<>();
             ButtonView actionButton = new ButtonView(activity);
             for (ForYouTopicFilter.Topic topic : topics) {
-                SettingsUi.SwitchRow row = SettingsUi.switchRow(
+                NewXSettingsUi.SwitchRow row = NewXSettingsUi.switchRow(
                         activity,
                         topic.getName(),
                         null,
@@ -94,7 +96,7 @@ final class ForYouTopicFilterSheet {
                 try {
                     if (selected.isEmpty()) {
                         selected.clear();
-                        for (SettingsUi.SwitchRow row : rows) {
+                        for (NewXSettingsUi.SwitchRow row : rows) {
                             if (row.isChecked()) row.setChecked(false, true);
                         }
                     }
@@ -121,11 +123,11 @@ final class ForYouTopicFilterSheet {
     private static void updateActionButton(ButtonView button, int selectedCount) {
         if (selectedCount > 0) {
             button.setText(selectedCount == 1
-                    ? "Show only 1 topic"
-                    : "Show only " + selectedCount + " topics");
+                    ? str("piko_newx_l10n_snooze_one")
+                    : str("piko_newx_l10n_snooze_count", selectedCount));
             button.setButtonStyle(ButtonView.ButtonStyle.FILLED);
         } else {
-            button.setText("Reset");
+            button.setText(str("piko_newx_l10n_reset"));
             button.setButtonStyle(ButtonView.ButtonStyle.TONAL);
         }
     }
