@@ -56,6 +56,7 @@ private const val USES_ICON_SIGNATURE = "usesIcon($OBJECT_DESCRIPTOR)Z"
 private const val HANDLE_OPTION_ACTION_SIGNATURE = "handleOptionAction($OBJECT_DESCRIPTOR$OBJECT_DESCRIPTOR)Z"
 
 internal const val BROWSE_OBJECT_ACTION = "None"
+internal const val SHARE_IMAGE_ACTION = "ViewDebugDialog"
 internal const val FILTERED_REPLIES_ACTION = "ServerFeedbackAction"
 internal const val TRANSLATE_ACTION = "ProtectedRetweetEdu"
 
